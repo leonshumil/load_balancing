@@ -1,0 +1,49 @@
+name: Deploy site to Pages
+
+on:
+  push:
+    branches: [main, dev]
+    paths: ["site/public/**", ".github/workflows/pages.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      # The live site at / is always main. The branch that triggered this run
+      # is published under /preview/ so changes can be checked before merging.
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          path: main-src
+      - uses: actions/checkout@v4
+        with:
+          path: this-src
+      - name: Assemble site
+        run: |
+          mkdir -p _site/preview
+          if [ -d main-src/site/public ]; then
+            cp -r main-src/site/public/. _site/
+          else
+            # main has no site yet: keep / valid and point to the preview.
+            printf '<!doctype html><meta charset="utf-8"><title>Not live yet</title><p>Not live yet. See <a href="preview/">the preview</a>.</p>\n' > _site/index.html
+          fi
+          cp -r this-src/site/public/. _site/preview/
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4

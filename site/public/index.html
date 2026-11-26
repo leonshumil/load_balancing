@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CONGA: where should load balancing live?</title>
+  <meta name="description" content="Unit 5 homework: three short puzzles on CONGA (SIGCOMM 2014), to do before class.">
+  <script>
+    // Set the theme before first paint (same rule as js/theme.js).
+    (function () {
+      var t = null;
+      try { t = JSON.parse(localStorage.getItem("conga-hw:theme")); } catch (e) {}
+      if (t !== "light" && t !== "dark") {
+        try { t = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"; } catch (e) { t = "light"; }
+      }
+      document.documentElement.setAttribute("data-theme", t);
+    })();
+  </script>
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/parts.css">
+  <script type="module">
+    import { initPage } from "./js/main.js";
+    initPage();
+  </script>
+</head>
+<body>
+  <div class="progress" aria-hidden="true"><div class="progress-fill"></div></div>
+  <button class="theme-toggle" type="button">Dark</button>
+
+  <main class="page">
+
+    <!-- ===================== intro ===================== -->
+    <header id="intro">
+      <p class="kicker">Unit 5 · Load balancing · Homework</p>
+      <h1>Where should load balancing live?</h1>
+      <p class="lede">
+        A datacenter fabric offers many equal-cost paths between any two racks, and ECMP spreads
+        traffic over them by hashing, without ever looking at congestion. CONGA (SIGCOMM 2014)
+        argues that the fabric itself should sense congestion along whole paths and steer traffic
+        around it; here you take that argument apart.
+      </p>
+      <p>
+        Work through three short puzzles, reading the paper passages in the margin as you go,
+        then answer three questions. Your answers are saved in this browser as you work, and one
+        Submit at the end sends everything.
+      </p>
+      <p class="meta">About 35 minutes · works on a phone</p>
+
+      <nav class="contents" aria-label="Contents">
+        <ol>
+          <li><a href="#tree"><span class="num">1</span>Where does CONGA sit?</a><span class="done-mark" data-done-for="tree" hidden>done</span></li>
+          <li><a href="#place"><span class="num">2</span>Place the schemes</a><span class="done-mark" data-done-for="place" hidden>done</span></li>
+          <li><a href="#fig2"><span class="num">3</span>Asymmetry lab</a><span class="done-mark" data-done-for="fig2" hidden>done</span></li>
+          <li><a href="#questions"><span class="num">Q</span>Questions</a><span class="done-mark" data-done-for="questions" hidden>done</span></li>
+          <li><a href="#submit"><span class="num">&rarr;</span>Submit</a></li>
+        </ol>
+      </nav>
+    </header>
+
+    <!-- ===================== Puzzle 1 ===================== -->
+    <section id="tree" class="part" aria-labelledby="tree-title">
+      <p class="kicker">Puzzle 1 · Walk the tree</p>
+      <h2 id="tree-title">Puzzle 1 · Where does CONGA sit?</h2>
+
+      <!-- Demo sidenote to exercise the layout; step 03 replaces it with the real passages. -->
+      <div class="with-note">
+        <p class="puzzle-prompt">
+          Figure 1 of the paper is a design tree: each fork is a choice about where load balancing
+          happens and what it knows. Walk it from the root and decide, at each fork, which branch
+          CONGA takes and why.
+        </p>
+        <aside class="sidenote" data-ref="§2.1">
+          <button class="sidenote-toggle" type="button">show passage §2.1</button>
+          <div class="sidenote-body">
+            <p><span class="sidenote-ref">CONGA §2.1</span></p>
+            <blockquote>
+              <p>“Responsive: Datacenter traffic is very volatile and bursty [18, 28, 8] and switch
+              buffers are shallow [4]. Thus, with CONGA, we aim for rapid round-trip timescale
+              (e.g., 10s of microseconds) reaction to congestion.”</p>
+            </blockquote>
+          </div>
+        </aside>
+      </div>
+
+      <div class="figure-slot wide" role="img" aria-label="Interactive Figure 1 (not built yet)">Figure 1 · interactive tree</div>
+      <div class="answer-slot">Answers for Puzzle 1</div>
+    </section>
+
+    <!-- ===================== Puzzle 2 ===================== -->
+    <section id="place" class="part" aria-labelledby="place-title">
+      <p class="kicker">Puzzle 2</p>
+      <h2 id="place-title">Puzzle 2 · Place the schemes</h2>
+      <p class="puzzle-prompt">
+        Other load-balancing schemes sit on other branches of the same tree. Put each one where
+        it belongs.
+      </p>
+      <div class="figure-slot wide" role="img" aria-label="Placement figure (not built yet)">Figure 1 · placement</div>
+      <div class="answer-slot">Answers for Puzzle 2</div>
+    </section>
+
+    <!-- ===================== Puzzle 3 ===================== -->
+    <section id="fig2" class="part" aria-labelledby="fig2-title">
+      <p class="kicker">Puzzle 3 · Figures 2 and 3</p>
+      <h2 id="fig2-title">Puzzle 3 · Asymmetry lab</h2>
+      <p class="puzzle-prompt">
+        When one link in a bundle fails, the paths stop having equal capacity. Split the traffic yourself
+        and see what a switch that only looks at its own links would do.
+      </p>
+      <div class="figure-slot wide" role="img" aria-label="Asymmetry lab (not built yet)">Figure 2 · asymmetry lab</div>
+      <div class="answer-slot">Answers for Puzzle 3</div>
+    </section>
+
+    <!-- ===================== Questions ===================== -->
+    <section id="questions" class="part" aria-labelledby="questions-title">
+      <p class="kicker">Questions</p>
+      <h2 id="questions-title">Questions Q1–Q3</h2>
+      <p>Three short questions. Short, argued answers beat long ones.</p>
+      <div class="answer-slot">Q1–Q3</div>
+    </section>
+
+    <!-- ===================== Submit ===================== -->
+    <section id="submit" class="part" aria-labelledby="submit-title">
+      <p class="kicker">Submit</p>
+      <h2 id="submit-title">Submit</h2>
+      <p>One Submit sends everything. If you submit again later, the new answers replace the old ones.</p>
+      <p><button class="btn" type="button" disabled>Submit</button></p>
+    </section>
+
+  </main>
+</body>
+</html>

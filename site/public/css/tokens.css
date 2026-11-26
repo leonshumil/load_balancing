@@ -1,0 +1,41 @@
+/* Design tokens. The only file that holds raw colors.
+   Palette: black ink on white, one accent (cobalt), one muted grey, thin rules. */
+
+:root {
+  /* color: light */
+  --bg: #ffffff;
+  --ink: #16161a;
+  --muted: #66666e;
+  --rule: #e3e3e6;
+  --accent: #2453c4;
+  --accent-soft: #eaf0fc;
+  --ok: #1d7a4c;
+  --bad: #b42d23;
+
+  /* type */
+  --font-serif: "Iowan Old Style", "Charter", "Bitstream Charter", "Sitka Text", Cambria, Georgia, "DejaVu Serif", serif;
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", "Liberation Mono", monospace;
+
+  /* layout */
+  --text-w: 680px;   /* reading column */
+  --note-w: 240px;   /* sidenote margin column */
+  --note-gap: 40px;
+  --page-w: 960px;   /* = text + gap + notes; wide figures use the full width */
+  --pad: 1.25rem;    /* page side padding */
+
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  --bg: #141416;
+  --ink: #e8e6e1;
+  --muted: #9b9ba3;
+  --rule: #2f2f35;
+  --accent: #7ea2ff;
+  --accent-soft: #1d2640;
+  --ok: #5cc28f;
+  --bad: #f08a80;
+
+  color-scheme: dark;
+}
