@@ -22,15 +22,17 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      # The live site at / is always main. The branch that triggered this run
-      # is published under /preview/ so changes can be checked before merging.
+      # Every run rebuilds the whole site from both branches, whichever one was
+      # pushed: / is always main (live), /preview/ is always dev (shared work
+      # in progress), so one person's push never replaces the other's preview.
       - uses: actions/checkout@v4
         with:
           ref: main
           path: main-src
       - uses: actions/checkout@v4
         with:
-          path: this-src
+          ref: dev
+          path: dev-src
       - name: Assemble site
         run: |
           mkdir -p _site/preview
@@ -40,7 +42,7 @@ jobs:
             # main has no site yet: keep / valid and point to the preview.
             printf '<!doctype html><meta charset="utf-8"><title>Not live yet</title><p>Not live yet. See <a href="preview/">the preview</a>.</p>\n' > _site/index.html
           fi
-          cp -r this-src/site/public/. _site/preview/
+          cp -r dev-src/site/public/. _site/preview/
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

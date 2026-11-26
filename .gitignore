@@ -1,6 +1,7 @@
 *.md
 !README.md
+!CLAUDE.md
 node_modules/
 .DS_Store
 .env
-docs/design-ref.png
+docs/
