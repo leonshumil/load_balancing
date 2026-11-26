@@ -3,26 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Unit 5 · Load balancing · CONGA</title>
-  <script src="shared/theme-boot.js"></script>
-  <link rel="stylesheet" href="shared/tokens.css">
-  <link rel="stylesheet" href="shared/base.css">
-  <script type="module">
-    import { initTheme } from "./shared/theme.js";
-    initTheme(document.querySelector(".theme-toggle"));
-  </script>
+  <title>CONGA homework</title>
+  <!-- The site is only the homework: send visitors straight there (keeps any #section). -->
+  <meta http-equiv="refresh" content="0; url=hw/">
+  <link rel="canonical" href="hw/">
+  <script>location.replace("hw/" + location.hash);</script>
 </head>
 <body>
-  <button class="theme-toggle" type="button">Dark</button>
-  <main class="page">
-    <header>
-      <p class="kicker">Data Center Networks &amp; AI · Unit 5</p>
-      <h1>Load balancing: CONGA</h1>
-      <nav class="landing" aria-label="Sites">
-        <a href="hw/"><span class="landing-title">Homework</span><span class="meta">About 60 minutes, before class</span></a>
-        <a href="lesson/"><span class="landing-title">Lesson</span><span class="meta">The class itself</span></a>
-      </nav>
-    </header>
-  </main>
+  <p><a href="hw/">Open the CONGA homework</a></p>
 </body>
 </html>
