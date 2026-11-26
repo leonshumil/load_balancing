@@ -1,4 +1,5 @@
-/* Page skeleton: reading column, wide figures, sidenotes, progress line, controls.
+/* Shared layout for both sites: reading column, wide figures, sidenotes, progress line,
+   theme toggle, landing links.
    Colors come only from tokens.css. */
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -105,6 +106,9 @@ h3 { font-size: 1.25rem; margin: 2rem 0 0.5rem; }
   margin: 0 0 0.6rem;
 }
 
+.kicker a { color: inherit; text-decoration: none; }
+.kicker a:hover { color: var(--accent); }
+
 .lede { font-size: 1.3rem; line-height: 1.5; }
 
 .meta {
@@ -210,3 +214,19 @@ h3 { font-size: 1.25rem; margin: 2rem 0 0.5rem; }
 }
 
 html { scroll-behavior: smooth; }
+
+/* ---------- landing page ---------- */
+
+.landing { margin-top: 2.5rem; border-top: 1px solid var(--rule); }
+.landing a {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  padding: 1.1rem 0;
+  border-bottom: 1px solid var(--rule);
+  color: var(--ink);
+  text-decoration: none;
+}
+.landing-title { font-size: 1.6rem; font-weight: 600; }
+.landing a:hover .landing-title { color: var(--accent); }

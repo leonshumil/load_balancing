@@ -1,0 +1,37 @@
+/* Homework page: prompts, empty slots for later steps, contents times, submit button.
+   Colors come only from shared/tokens.css. */
+
+.prompt { font-size: 1.15rem; }
+
+.contents .time {
+  font-family: var(--font-mono);
+  font-size: 0.8em;
+  color: var(--muted);
+  margin-left: 0.6rem;
+}
+.contents .meta { margin: 0.75rem 0 0; }
+
+/* empty slots that later steps fill */
+.slot {
+  margin: 2rem 0;
+  padding: 1.25rem 0;
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+  font: 0.875rem/1.4 var(--font-sans);
+  color: var(--muted);
+  text-align: center;
+}
+.figure-slot { min-height: 14rem; display: grid; place-items: center; }
+.video-slot { aspect-ratio: 16 / 9; max-height: 540px; display: grid; place-items: center; }
+.chat-slot { border-style: dashed; padding: 2.5rem 0; }
+
+.btn {
+  font: 600 0.9375rem/1 var(--font-sans);
+  color: var(--bg);
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  padding: 0.7rem 1.1rem;
+  cursor: pointer;
+}
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }

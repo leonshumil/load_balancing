@@ -1,5 +1,5 @@
-// Theme: follows the system setting until the reader picks one, then remembers it.
-// index.html runs a tiny inline copy of `resolve` in <head> so there is no flash.
+// Theme: follows the system setting until the reader picks one, then remembers it
+// (shared by both sites). theme-boot.js applies the same rule before first paint.
 
 import { get, set } from "./store.js";
 

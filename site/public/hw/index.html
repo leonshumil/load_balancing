@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CONGA homework: where should load balancing live?</title>
+  <meta name="description" content="Unit 5 homework on CONGA (SIGCOMM 2014): read, watch, walk Figure 1, and try the asymmetry lab before class.">
+  <script src="../shared/theme-boot.js"></script>
+  <link rel="stylesheet" href="../shared/tokens.css">
+  <link rel="stylesheet" href="../shared/base.css">
+  <link rel="stylesheet" href="hw.css">
+  <script type="module">
+    import { initPage } from "./main.js";
+    initPage();
+  </script>
+</head>
+<body>
+  <div class="progress" aria-hidden="true"><div class="progress-fill"></div></div>
+  <button class="theme-toggle" type="button">Dark</button>
+
+  <main class="page">
+
+    <!-- ===================== intro ===================== -->
+    <header id="intro">
+      <p class="kicker"><a href="../">Unit 5</a> · Load balancing · Homework</p>
+      <h1>Where should load balancing live?</h1>
+      <p class="lede">
+        Unit 4 ended on a gap: the WCMP controller knows the topology but not the load right now,
+        a switch sees only its own links, and a FlowBender sender gets feedback without knowing
+        the state of the other paths. CONGA (SIGCOMM 2014) gives its own answer to who measures,
+        who decides and who acts; here you follow how the paper gets there and test it on small
+        fabrics where the paths are not equal.
+      </p>
+      <p>
+        Work through the five sections in order. Your answers are saved in this browser as you go,
+        and one Submit at the end sends everything for the class discussion.
+      </p>
+
+      <nav class="contents" aria-label="Contents">
+        <ol>
+          <li><a href="#read"><span class="num">1</span>Read<span class="time">15 min</span></a><span class="done-mark" data-done-for="read" hidden>done</span></li>
+          <li><a href="#watch"><span class="num">2</span>Watch<span class="time">10 min</span></a><span class="done-mark" data-done-for="watch" hidden>done</span></li>
+          <li><a href="#path"><span class="num">3</span>Where does CONGA sit?<span class="time">15 min</span></a><span class="done-mark" data-done-for="path" hidden>done</span></li>
+          <li><a href="#chat"><span class="num">4</span>Chat<span class="time">5 min</span></a><span class="done-mark" data-done-for="chat" hidden>done</span></li>
+          <li><a href="#lab"><span class="num">5</span>Asymmetry lab<span class="time">15 min</span></a><span class="done-mark" data-done-for="lab" hidden>done</span></li>
+          <li><a href="#submit"><span class="num">&rarr;</span>Submit</a></li>
+        </ol>
+        <p class="meta">About 60 minutes in total · works on a phone</p>
+      </nav>
+    </header>
+
+    <!-- ===================== 1 · Read ===================== -->
+    <section id="read" class="part" aria-labelledby="read-title">
+      <p class="kicker">Section 1 · about 15 minutes</p>
+      <h2 id="read-title">1 · Read</h2>
+      <p class="prompt">
+        A few passages from the CONGA paper, each with its exact page and line range and a link
+        to that page of the PDF.
+      </p>
+      <div class="slot">Reading passages</div>
+    </section>
+
+    <!-- ===================== 2 · Watch ===================== -->
+    <section id="watch" class="part" aria-labelledby="watch-title">
+      <p class="kicker">Section 2 · about 10 minutes</p>
+      <h2 id="watch-title">2 · Watch</h2>
+      <p class="prompt">One short video overview of the paper.</p>
+      <div class="slot wide video-slot">Video</div>
+    </section>
+
+    <!-- ===================== 3 · Figure 1 path ===================== -->
+    <section id="path" class="part" aria-labelledby="path-title">
+      <p class="kicker">Section 3 · Figure 1 · about 15 minutes</p>
+      <h2 id="path-title">3 · Where does CONGA sit?</h2>
+
+      <!-- Demo sidenote to exercise the layout; a later step replaces it with the real passages. -->
+      <div class="with-note">
+        <p class="prompt">
+          Figure 1 of the paper is a design tree: each fork is a choice about where load balancing
+          happens and what it knows. Walk it from the top and decide, at each fork, which branch
+          the paper takes and why.
+        </p>
+        <aside class="sidenote" data-ref="§2.1">
+          <button class="sidenote-toggle" type="button">show passage §2.1</button>
+          <div class="sidenote-body">
+            <p><span class="sidenote-ref">CONGA §2.1</span></p>
+            <blockquote>
+              <p>“Responsive: Datacenter traffic is very volatile and bursty [18, 28, 8] and switch
+              buffers are shallow [4]. Thus, with CONGA, we aim for rapid round-trip timescale
+              (e.g., 10s of microseconds) reaction to congestion.”</p>
+            </blockquote>
+          </div>
+        </aside>
+      </div>
+
+      <div class="slot wide figure-slot" role="img" aria-label="Interactive Figure 1 (not built yet)">Figure 1 · design tree</div>
+    </section>
+
+    <!-- ===================== 4 · Chat (reserved) ===================== -->
+    <section id="chat" class="part" aria-labelledby="chat-title">
+      <p class="kicker">Section 4 · about 5 minutes</p>
+      <h2 id="chat-title">4 · Chat</h2>
+      <div class="slot chat-slot">Reserved. The format of this section is not decided yet.</div>
+    </section>
+
+    <!-- ===================== 5 · Lab ===================== -->
+    <section id="lab" class="part" aria-labelledby="lab-title">
+      <p class="kicker">Section 5 · Figures 2 and 3 · about 15 minutes</p>
+      <h2 id="lab-title">5 · Asymmetry lab</h2>
+      <p class="prompt">
+        When one link in a bundle fails, the paths stop having equal capacity. Split the traffic
+        yourself on two small fabrics and compare what each kind of scheme would do.
+      </p>
+      <div class="slot wide figure-slot" role="img" aria-label="Figure 2 lab (not built yet)">Figure 2 · lab</div>
+      <div class="slot wide figure-slot" role="img" aria-label="Figure 3 lab (not built yet)">Figure 3 · lab</div>
+    </section>
+
+    <!-- ===================== Submit ===================== -->
+    <section id="submit" class="part" aria-labelledby="submit-title">
+      <p class="kicker">Submit</p>
+      <h2 id="submit-title">Submit</h2>
+      <p>One Submit sends everything. If you submit again later, the new answers replace the old ones.</p>
+      <p><button class="btn" type="button" disabled>Submit</button></p>
+    </section>
+
+  </main>
+</body>
+</html>
