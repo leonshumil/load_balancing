@@ -1,10 +1,7 @@
 // Classic (non-module) script, loaded in <head> before the CSS so the right theme
-// is set before first paint. Same rule as theme.js: saved choice, else system.
+// is set before first paint. Same rule as theme.js: the saved choice, else dark.
 (function () {
   var t = null;
   try { t = JSON.parse(localStorage.getItem("conga:theme")); } catch (e) {}
-  if (t !== "light" && t !== "dark") {
-    try { t = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"; } catch (e) { t = "light"; }
-  }
-  document.documentElement.setAttribute("data-theme", t);
+  document.documentElement.setAttribute("data-theme", t === "light" ? "light" : "dark");
 })();

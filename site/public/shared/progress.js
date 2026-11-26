@@ -1,11 +1,12 @@
-// Thin reading-progress line at the top of the page, with a tick per section that
-// turns solid when the section is marked finished. Finished sections are stored
-// under `storeKey`; contents links with [data-done-for="<id>"] show "done".
+// Progress: finished sections (stored under `storeKey`) and the thin reading line.
+// Anything marked [data-progress-for="<id>"] gets .is-done when that section is
+// finished (rail icon, contents chip, progress-panel row); [data-done-for="<id>"]
+// elements are shown/hidden; [data-progress-count] shows "done/total".
+// DOM is only touched in start()/render(), so importing this does nothing.
 
 import { get, set } from "./store.js";
 
 export function createProgress({ ids, storeKey, selector = ".progress" }) {
-  // DOM is looked up lazily (in render/start), so importing this does nothing.
   let bar = null;
 
   const doneSet = () => {
@@ -17,9 +18,12 @@ export function createProgress({ ids, storeKey, selector = ".progress" }) {
     const s = doneSet();
     for (const id of ids) {
       const isDone = s.has(id);
-      document.querySelector(`[data-done-for="${id}"]`)?.toggleAttribute("hidden", !isDone);
+      document.querySelectorAll(`[data-done-for="${id}"]`).forEach((e) => e.toggleAttribute("hidden", !isDone));
+      document.querySelectorAll(`[data-progress-for="${id}"]`).forEach((e) => e.classList.toggle("is-done", isDone));
       bar?.querySelector(`.progress-tick[data-for="${id}"]`)?.classList.toggle("is-done", isDone);
     }
+    const n = ids.filter((id) => s.has(id)).length;
+    document.querySelectorAll("[data-progress-count]").forEach((e) => { e.textContent = `${n}/${ids.length}`; });
   }
 
   function setDone(id, done = true) {
@@ -32,6 +36,7 @@ export function createProgress({ ids, storeKey, selector = ".progress" }) {
   function start() {
     bar = document.querySelector(selector);
     const fill = bar?.querySelector(".progress-fill");
+    render();
     if (!bar || !fill) return;
     const ticks = ids.map((id) => {
       const t = document.createElement("span");
@@ -64,4 +69,21 @@ export function createProgress({ ids, storeKey, selector = ".progress" }) {
   }
 
   return { start, setDone, render };
+}
+
+/**
+ * Time spent on the page while it is visible, stored in seconds under `storeKey`.
+ * [data-time-spent] elements show whole minutes.
+ */
+export function trackTime({ storeKey, every = 15 }) {
+  const show = () => {
+    const secs = Number(get(storeKey, 0)) || 0;
+    document.querySelectorAll("[data-time-spent]").forEach((e) => { e.textContent = `${Math.floor(secs / 60)} min`; });
+  };
+  show();
+  setInterval(() => {
+    if (document.visibilityState !== "visible") return;
+    set(storeKey, (Number(get(storeKey, 0)) || 0) + every);
+    show();
+  }, every * 1000);
 }

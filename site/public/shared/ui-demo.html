@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Component sheet</title>
+  <meta name="robots" content="noindex">
+  <script src="theme-boot.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap">
+  <link rel="stylesheet" href="tokens.css">
+  <link rel="stylesheet" href="base.css">
+  <link rel="stylesheet" href="ui.css">
+  <style>
+    .demo { max-width: 960px; margin: 0 auto; padding: 24px; display: grid; gap: 24px; }
+    .demo .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+    .demo .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px; }
+  </style>
+  <script type="module">
+    import { initTheme } from "./theme.js";
+    import { chipRow, checkResult, dotGrid, areaChart, summaryCard } from "./ui.js";
+    initTheme(document.getElementById("theme"));
+    const out = document.getElementById("chip-out");
+    chipRow(document.getElementById("chips"), [
+      { id: "ecmp", label: "ECMP", sub: "static" },
+      { id: "local", label: "Local", sub: "congestion-aware" },
+      { id: "conga", label: "CONGA", sub: "global" },
+      { id: "wcmp", label: "WCMP", sub: "static weights" },
+    ], { selected: "conga", label: "Scheme", onSelect: (id) => { out.textContent = `selected: ${id}`; } });
+    checkResult(document.getElementById("ok"), true, "Correct: example feedback text.");
+    checkResult(document.getElementById("bad"), false, "Not quite: example feedback text.");
+    dotGrid(document.getElementById("dots"), { violet: 14, gold: 6, ring: 3, empty: 5 }, "Example: 28 flows");
+    areaChart(document.getElementById("chart"), {
+      series: [2.5, 2.4, 2.1, 2.6, 2.8, 2.5, 2.9, 2.6, 1.4, 4, 3.2, 2.6, 2.8, 2.5, 2.7, 2.5],
+      compare: [2.8, 2.3, 2.6, 2.5, 2.9, 2.4, 2.5, 2.4, 2.6, 2.5, 3.1, 2.9, 3.2, 2.6, 2.4, 3.2],
+      max: 4, yTicks: [1, 2, 3, 4], label: "Example area chart with a comparison line",
+    });
+    summaryCard(document.getElementById("summary"), { value: "7/8", caption: "Example final score" });
+  </script>
+</head>
+<body>
+  <div class="demo">
+    <div class="row" style="justify-content: space-between">
+      <h1>Component sheet</h1>
+      <button id="theme" class="btn" type="button">Light</button>
+    </div>
+    <p class="muted">Shared components from <code>shared/ui.css</code> and <code>shared/ui.js</code>. All data on this page is placeholder.</p>
+
+    <section class="panel">
+      <p class="label">Pill chip row · lavender when selected · arrow keys move</p>
+      <div id="chips" style="margin-top: 10px"></div>
+      <p id="chip-out" class="muted" style="margin: 8px 0 0">selected: conga</p>
+    </section>
+
+    <div class="cols">
+      <section class="panel">
+        <p class="label">Badges</p>
+        <div class="row" style="margin-top: 10px">
+          <span class="badge badge-gold">12 min</span>
+          <span class="badge badge-violet">00:17</span>
+          <span class="badge">neutral</span>
+        </div>
+        <p class="label" style="margin-top: 18px">Buttons</p>
+        <div class="row" style="margin-top: 10px">
+          <button class="btn btn-primary" type="button">Check</button>
+          <button class="btn" type="button">Reset</button>
+          <button class="btn btn-primary" type="button" disabled>Disabled</button>
+        </div>
+      </section>
+      <section class="panel">
+        <p class="label">Check result</p>
+        <div id="ok" style="margin-top: 10px"></div>
+        <div id="bad" style="margin-top: 8px"></div>
+      </section>
+    </div>
+
+    <section class="panel">
+      <p class="label">Area chart · violet fill, dashed gold comparison</p>
+      <div id="chart" style="margin-top: 10px"></div>
+      <ul class="legend"><li><span class="key"></span>series</li><li><span class="key key-compare"></span>comparison</li></ul>
+    </section>
+
+    <div class="cols">
+      <section class="panel">
+        <p class="label">Dot grid · flows on a link</p>
+        <div id="dots" style="margin-top: 12px"></div>
+      </section>
+      <section>
+        <div id="summary"></div>
+      </section>
+    </div>
+
+    <section class="panel">
+      <p class="label">Panel inset and empty slot</p>
+      <div class="panel-inset" style="margin-top: 10px">An inset block inside a panel.</div>
+      <div class="slot" style="margin-top: 12px">Empty slot for a later step</div>
+    </section>
+  </div>
+</body>
+</html>

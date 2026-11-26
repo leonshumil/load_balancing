@@ -2,12 +2,16 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>CONGA homework: where should load balancing live?</title>
-  <meta name="description" content="Unit 5 homework on CONGA (SIGCOMM 2014): read, watch, walk Figure 1, and try the asymmetry lab before class.">
+  <meta name="description" content="Unit 5 homework on CONGA (SIGCOMM 2014): read, watch, walk Figure 1, try the asymmetry lab and check yourself before class.">
   <script src="../shared/theme-boot.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap">
   <link rel="stylesheet" href="../shared/tokens.css">
   <link rel="stylesheet" href="../shared/base.css">
+  <link rel="stylesheet" href="../shared/ui.css">
   <link rel="stylesheet" href="hw.css">
   <script type="module">
     import { initPage } from "./main.js";
@@ -15,14 +19,49 @@
   </script>
 </head>
 <body>
-  <div class="progress" aria-hidden="true"><div class="progress-fill"></div></div>
-  <button class="theme-toggle" type="button">Dark</button>
+  <!-- icon sprite (stroke icons, 24x24) -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <symbol id="i-read" viewBox="0 0 24 24"><path d="M2.5 4.5h6a3.5 3.5 0 0 1 3.5 3.5v12a3 3 0 0 0-3-3H2.5z"/><path d="M21.5 4.5h-6A3.5 3.5 0 0 0 12 8v12a3 3 0 0 1 3-3h6.5z"/></symbol>
+      <symbol id="i-watch" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M10 8.5v7l6-3.5z"/></symbol>
+      <symbol id="i-path" viewBox="0 0 24 24"><circle cx="12" cy="4.5" r="2"/><circle cx="5.5" cy="19.5" r="2"/><circle cx="18.5" cy="19.5" r="2"/><path d="M12 6.5v4.5M12 11l-5.5 6.6M12 11l5.5 6.6"/></symbol>
+      <symbol id="i-chat" viewBox="0 0 24 24"><path d="M20.5 12a8.5 8.5 0 0 1-12.4 7.5L3.5 20.5l1.2-4.3A8.5 8.5 0 1 1 20.5 12z"/></symbol>
+      <symbol id="i-lab" viewBox="0 0 24 24"><path d="M9 3h6M10 3v6.2L4.6 18.3A1.8 1.8 0 0 0 6.2 21h11.6a1.8 1.8 0 0 0 1.6-2.7L14 9.2V3"/><path d="M7.2 15h9.6"/></symbol>
+      <symbol id="i-questions" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.2a2.5 2.5 0 1 1 3.4 2.3c-.6.3-1 .9-1 1.6v.4"/><path d="M12 16.8v.1"/></symbol>
+      <symbol id="i-submit" viewBox="0 0 24 24"><path d="M21 3 10.5 13.5"/><path d="M21 3l-6.5 18-4-7.5L3 9.5z"/></symbol>
+      <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4"/></symbol>
+      <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20.5 13.2A8.5 8.5 0 1 1 10.8 3.5a6.8 6.8 0 0 0 9.7 9.7z"/></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+    </defs>
+  </svg>
 
-  <main class="page">
+  <div class="progress" aria-hidden="true"><div class="progress-fill"></div></div>
+
+  <div class="app">
+
+    <!-- ===================== icon rail (bottom bar on a phone) ===================== -->
+    <nav class="rail" aria-label="Sections">
+      <div class="rail-inner">
+        <ul class="rail-links">
+          <li><a class="rail-btn" href="#read" data-section="read" data-progress-for="read" title="1 · Read" aria-label="1 · Read"><svg class="icon"><use href="#i-read"/></svg><span class="rail-done"></span></a></li>
+          <li><a class="rail-btn" href="#watch" data-section="watch" data-progress-for="watch" title="2 · Watch" aria-label="2 · Watch"><svg class="icon"><use href="#i-watch"/></svg><span class="rail-done"></span></a></li>
+          <li><a class="rail-btn" href="#path" data-section="path" data-progress-for="path" title="3 · Where does CONGA sit?" aria-label="3 · Where does CONGA sit?"><svg class="icon"><use href="#i-path"/></svg><span class="rail-done"></span></a></li>
+          <li><a class="rail-btn" href="#chat" data-section="chat" data-progress-for="chat" title="4 · Chat" aria-label="4 · Chat"><svg class="icon"><use href="#i-chat"/></svg><span class="rail-done"></span></a></li>
+          <li><a class="rail-btn" href="#lab" data-section="lab" data-progress-for="lab" title="5 · Asymmetry lab" aria-label="5 · Asymmetry lab"><svg class="icon"><use href="#i-lab"/></svg><span class="rail-done"></span></a></li>
+          <li><a class="rail-btn" href="#questions" data-section="questions" data-progress-for="questions" title="6 · Questions" aria-label="6 · Questions"><svg class="icon"><use href="#i-questions"/></svg><span class="rail-done"></span></a></li>
+          <li><a class="rail-btn" href="#submit" data-section="submit" title="Submit" aria-label="Submit"><svg class="icon"><use href="#i-submit"/></svg></a></li>
+        </ul>
+        <div class="rail-spacer"></div>
+        <button class="rail-btn theme-toggle" type="button" data-icon aria-label="Switch theme">
+          <svg class="icon icon-sun"><use href="#i-sun"/></svg>
+          <svg class="icon icon-moon"><use href="#i-moon"/></svg>
+        </button>
+      </div>
+    </nav>
 
     <!-- ===================== intro ===================== -->
-    <header id="intro">
-      <p class="kicker">Unit 5 · Load balancing · Homework</p>
+    <header id="intro" class="intro">
+      <p class="label">Unit 5 · Load balancing · Homework</p>
       <h1>Where should load balancing live?</h1>
       <p class="lede">
         Unit 4 ended on a gap: the WCMP controller knows the topology but not the load right now,
@@ -32,97 +71,103 @@
         fabrics where the paths are not equal.
       </p>
       <p>
-        Work through the five sections in order. Your answers are saved in this browser as you go,
+        Work through the six sections in order. Your answers are saved in this browser as you go,
         and one Submit at the end sends everything for the class discussion.
+        About 60 minutes in total; works on a phone.
       </p>
-
       <nav class="contents" aria-label="Contents">
-        <ol>
-          <li><a href="#read"><span class="num">1</span>Read<span class="time">15 min</span></a><span class="done-mark" data-done-for="read" hidden>done</span></li>
-          <li><a href="#watch"><span class="num">2</span>Watch<span class="time">10 min</span></a><span class="done-mark" data-done-for="watch" hidden>done</span></li>
-          <li><a href="#path"><span class="num">3</span>Where does CONGA sit?<span class="time">15 min</span></a><span class="done-mark" data-done-for="path" hidden>done</span></li>
-          <li><a href="#chat"><span class="num">4</span>Chat<span class="time">5 min</span></a><span class="done-mark" data-done-for="chat" hidden>done</span></li>
-          <li><a href="#lab"><span class="num">5</span>Asymmetry lab<span class="time">15 min</span></a><span class="done-mark" data-done-for="lab" hidden>done</span></li>
-          <li><a href="#submit"><span class="num">&rarr;</span>Submit</a></li>
+        <ol class="chips">
+          <li><a class="chip" href="#read" data-progress-for="read"><span>1 · Read</span><span class="chip-sub">12 min</span></a></li>
+          <li><a class="chip" href="#watch" data-progress-for="watch"><span>2 · Watch</span><span class="chip-sub">5 min</span></a></li>
+          <li><a class="chip" href="#path" data-progress-for="path"><span>3 · Figure 1 path</span><span class="chip-sub">15 min</span></a></li>
+          <li><a class="chip" href="#chat" data-progress-for="chat"><span>4 · Chat</span><span class="chip-sub">5 min</span></a></li>
+          <li><a class="chip" href="#lab" data-progress-for="lab"><span>5 · Lab</span><span class="chip-sub">15 min</span></a></li>
+          <li><a class="chip" href="#questions" data-progress-for="questions"><span>6 · Questions</span><span class="chip-sub">8 min</span></a></li>
+          <li><a class="chip" href="#submit"><span>Submit</span><span class="chip-sub">60 min total</span></a></li>
         </ol>
-        <p class="meta">About 60 minutes in total · works on a phone</p>
       </nav>
     </header>
 
-    <!-- ===================== 1 · Read ===================== -->
-    <section id="read" class="part" aria-labelledby="read-title">
-      <p class="kicker">Section 1 · about 15 minutes</p>
-      <h2 id="read-title">1 · Read</h2>
-      <p class="prompt">
-        A few passages from the CONGA paper, each with its exact page and line range and a link
-        to that page of the PDF.
-      </p>
-      <div class="slot">Reading passages</div>
-    </section>
-
-    <!-- ===================== 2 · Watch ===================== -->
-    <section id="watch" class="part" aria-labelledby="watch-title">
-      <p class="kicker">Section 2 · about 10 minutes</p>
-      <h2 id="watch-title">2 · Watch</h2>
-      <p class="prompt">One short video overview of the paper.</p>
-      <div class="slot wide video-slot">Video</div>
-    </section>
-
-    <!-- ===================== 3 · Figure 1 path ===================== -->
-    <section id="path" class="part" aria-labelledby="path-title">
-      <p class="kicker">Section 3 · Figure 1 · about 15 minutes</p>
-      <h2 id="path-title">3 · Where does CONGA sit?</h2>
-
-      <!-- Demo sidenote to exercise the layout; a later step replaces it with the real passages. -->
-      <div class="with-note">
-        <p class="prompt">
-          Figure 1 of the paper is a design tree: each fork is a choice about where load balancing
-          happens and what it knows. Walk it from the top and decide, at each fork, which branch
-          the paper takes and why.
-        </p>
-        <aside class="sidenote" data-ref="§2.1">
-          <button class="sidenote-toggle" type="button">show passage §2.1</button>
-          <div class="sidenote-body">
-            <p><span class="sidenote-ref">CONGA §2.1</span></p>
-            <blockquote>
-              <p>“Responsive: Datacenter traffic is very volatile and bursty [18, 28, 8] and switch
-              buffers are shallow [4]. Thus, with CONGA, we aim for rapid round-trip timescale
-              (e.g., 10s of microseconds) reaction to congestion.”</p>
-            </blockquote>
-          </div>
-        </aside>
+    <!-- ===================== right column: progress ===================== -->
+    <aside class="side" aria-label="Your progress">
+      <div class="panel progress-panel">
+        <h2>Your progress</h2>
+        <ol class="progress-rows">
+          <li class="progress-row" data-progress-for="read"><a href="#read"><span class="n">1</span><span>Read</span><span class="badge badge-gold">12 min</span><span class="tick"><svg><use href="#i-check"/></svg></span></a></li>
+          <li class="progress-row" data-progress-for="watch"><a href="#watch"><span class="n">2</span><span>Watch</span><span class="badge badge-gold">5 min</span><span class="tick"><svg><use href="#i-check"/></svg></span></a></li>
+          <li class="progress-row" data-progress-for="path"><a href="#path"><span class="n">3</span><span>Figure 1 path</span><span class="badge badge-gold">15 min</span><span class="tick"><svg><use href="#i-check"/></svg></span></a></li>
+          <li class="progress-row" data-progress-for="chat"><a href="#chat"><span class="n">4</span><span>Chat</span><span class="badge badge-gold">5 min</span><span class="tick"><svg><use href="#i-check"/></svg></span></a></li>
+          <li class="progress-row" data-progress-for="lab"><a href="#lab"><span class="n">5</span><span>Lab</span><span class="badge badge-gold">15 min</span><span class="tick"><svg><use href="#i-check"/></svg></span></a></li>
+          <li class="progress-row" data-progress-for="questions"><a href="#questions"><span class="n">6</span><span>Questions</span><span class="badge badge-gold">8 min</span><span class="tick"><svg><use href="#i-check"/></svg></span></a></li>
+        </ol>
+        <div class="progress-stats">
+          <div class="stat"><p class="label">Done</p><div class="value" data-progress-count>0/6</div></div>
+          <div class="stat"><p class="label">Time spent</p><div class="value" data-time-spent>0 min</div></div>
+        </div>
       </div>
+    </aside>
 
-      <div class="slot wide figure-slot" role="img" aria-label="Interactive Figure 1 (not built yet)">Figure 1 · design tree</div>
-    </section>
+    <!-- ===================== sections ===================== -->
+    <main class="main">
 
-    <!-- ===================== 4 · Chat (reserved) ===================== -->
-    <section id="chat" class="part" aria-labelledby="chat-title">
-      <p class="kicker">Section 4 · about 5 minutes</p>
-      <h2 id="chat-title">4 · Chat</h2>
-      <div class="slot chat-slot">Reserved. The format of this section is not decided yet.</div>
-    </section>
+      <section id="read" class="part panel" aria-labelledby="read-title">
+        <header class="section-head">
+          <div class="section-title-row"><h2 id="read-title">1 · Read</h2><span class="badge badge-gold">12 min</span></div>
+          <p class="subtitle">A few passages from the CONGA paper, each with exact pages and lines and a link to the PDF.</p>
+        </header>
+        <div class="slot">Reading passages</div>
+      </section>
 
-    <!-- ===================== 5 · Lab ===================== -->
-    <section id="lab" class="part" aria-labelledby="lab-title">
-      <p class="kicker">Section 5 · Figures 2 and 3 · about 15 minutes</p>
-      <h2 id="lab-title">5 · Asymmetry lab</h2>
-      <p class="prompt">
-        When one link in a bundle fails, the paths stop having equal capacity. Split the traffic
-        yourself on two small fabrics and compare what each kind of scheme would do.
-      </p>
-      <div class="slot wide figure-slot" role="img" aria-label="Figure 2 lab (not built yet)">Figure 2 · lab</div>
-      <div class="slot wide figure-slot" role="img" aria-label="Figure 3 lab (not built yet)">Figure 3 · lab</div>
-    </section>
+      <section id="watch" class="part panel" aria-labelledby="watch-title">
+        <header class="section-head">
+          <div class="section-title-row"><h2 id="watch-title">2 · Watch</h2><span class="badge badge-gold">5 min</span></div>
+          <p class="subtitle">One short video overview of the paper, 3 to 5 minutes.</p>
+        </header>
+        <div class="slot slot-video">Video</div>
+      </section>
 
-    <!-- ===================== Submit ===================== -->
-    <section id="submit" class="part" aria-labelledby="submit-title">
-      <p class="kicker">Submit</p>
-      <h2 id="submit-title">Submit</h2>
-      <p>One Submit sends everything. If you submit again later, the new answers replace the old ones.</p>
-      <p><button class="btn" type="button" disabled>Submit</button></p>
-    </section>
+      <section id="path" class="part panel" aria-labelledby="path-title">
+        <header class="section-head">
+          <div class="section-title-row"><h2 id="path-title">3 · Where does CONGA sit?</h2><span class="badge badge-gold">15 min</span></div>
+          <p class="subtitle">Walk Figure 1's design tree from the top and decide at each fork which branch the paper takes, and why.</p>
+        </header>
+        <div class="slot slot-tall" role="img" aria-label="Interactive Figure 1 (not built yet)">Figure 1 · design tree</div>
+      </section>
 
-  </main>
+      <section id="chat" class="part panel" aria-labelledby="chat-title">
+        <header class="section-head">
+          <div class="section-title-row"><h2 id="chat-title">4 · Chat</h2><span class="badge badge-gold">5 min</span></div>
+          <p class="subtitle">Reserved. The format of this section is not decided yet.</p>
+        </header>
+        <div class="slot">Chat</div>
+      </section>
+
+      <section id="lab" class="part panel" aria-labelledby="lab-title">
+        <header class="section-head">
+          <div class="section-title-row"><h2 id="lab-title">5 · Asymmetry lab</h2><span class="badge badge-gold">15 min</span></div>
+          <p class="subtitle">Figures 2 and 3: split the traffic over paths of unequal capacity and compare the schemes.</p>
+        </header>
+        <div class="slot slot-tall" role="img" aria-label="Figure 2 lab (not built yet)">Figure 2 · lab</div>
+        <div class="slot slot-tall" role="img" aria-label="Figure 3 lab (not built yet)">Figure 3 · lab</div>
+      </section>
+
+      <section id="questions" class="part panel" aria-labelledby="questions-title">
+        <header class="section-head">
+          <div class="section-title-row"><h2 id="questions-title">6 · Questions</h2><span class="badge badge-gold">8 min</span></div>
+          <p class="subtitle">Six to eight self-check questions, each with a Check button and instant feedback.</p>
+        </header>
+        <div class="slot">Questions</div>
+      </section>
+
+      <section id="submit" class="part panel" aria-labelledby="submit-title">
+        <header class="section-head">
+          <div class="section-title-row"><h2 id="submit-title">Submit</h2></div>
+          <p class="subtitle">One Submit sends everything. If you submit again later, the new answers replace the old ones.</p>
+        </header>
+        <button class="btn btn-primary" type="button" disabled>Submit</button>
+      </section>
+
+    </main>
+  </div>
 </body>
 </html>

@@ -1,46 +1,29 @@
-// Theme: follows the system setting until the reader picks one, then remembers it
-// (shared by both sites). theme-boot.js applies the same rule before first paint.
+// Theme: dark by default; the reader's choice is remembered.
+// theme-boot.js applies the same rule before first paint.
+// An icon button (data-icon) keeps its icons; a text button shows "Dark"/"Light".
 
 import { get, set } from "./store.js";
 
-const KEY = "theme"; // "light" | "dark" | absent = follow system
-
-function systemTheme() {
-  try {
-    return matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-  } catch {
-    return "light";
-  }
-}
+const KEY = "theme"; // "light" | "dark" | absent = dark
 
 function resolve() {
-  const saved = get(KEY);
-  return saved === "light" || saved === "dark" ? saved : systemTheme();
+  return get(KEY) === "light" ? "light" : "dark";
 }
 
 function apply(theme, button) {
   document.documentElement.dataset.theme = theme;
-  if (button) {
-    const other = theme === "dark" ? "light" : "dark";
-    button.textContent = other === "dark" ? "Dark" : "Light";
-    button.setAttribute("aria-label", `Switch to ${other} theme`);
-  }
+  if (!button) return;
+  const other = theme === "dark" ? "light" : "dark";
+  button.setAttribute("aria-label", `Switch to ${other} theme`);
+  button.title = `Switch to ${other} theme`;
+  if (!("icon" in button.dataset)) button.textContent = other === "dark" ? "Dark" : "Light";
 }
 
 export function initTheme(button) {
   apply(resolve(), button);
-
   button?.addEventListener("click", () => {
     const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
     set(KEY, next);
     apply(next, button);
   });
-
-  try {
-    matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
-      if (get(KEY) == null) apply(systemTheme(), button);
-    });
-  } catch {
-    /* old browsers: no live follow */
-  }
 }

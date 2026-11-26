@@ -1,41 +1,65 @@
-/* Design tokens. The only file that holds raw colors.
-   Palette: black ink on white, one accent (cobalt), one muted grey, thin rules. */
+/* Design tokens: the only file that holds raw colors.
+   Dark dashboard look (docs/design-ref.png): rounded panels, one violet and one gold accent.
+   Dark is the default; [data-theme="light"] is a readable light variant. */
 
-:root {
-  /* color: light */
-  --bg: #ffffff;
-  --ink: #16161a;
-  --muted: #66666e;
-  --rule: #e3e3e6;
-  --accent: #2453c4;
-  --accent-soft: #eaf0fc;
-  --ok: #1d7a4c;
-  --bad: #b42d23;
+:root,
+[data-theme="dark"] {
+  --bg: #0A0A0C;
+  --panel: #16151B;
+  --panel-grad: #1D1628;      /* panels fade toward this at the bottom */
+  --panel-raised: #1F1D26;    /* chips, rail buttons, inputs on a panel */
+  --border: #24222C;
+  --text: #F4F4F6;
+  --muted: #8B8A96;
+  --violet: #8B5CF6;          /* lines, fills, CONGA's path, primary buttons */
+  --violet-soft: #A78BFA;
+  --violet-fill: rgba(139, 92, 246, 0.22);  /* area-chart fill, current rail item */
+  --lavender: #E6DAFE;        /* selected chip */
+  --lavender-ink: #1B1530;    /* text on lavender */
+  --gold: #F5C542;            /* second series, minute badges, highlights */
+  --gold-ink: #1A1405;        /* text on gold */
+  --ok: #22C55E;
+  --bad: #F43F5E;
+  --on-accent: #FFFFFF;       /* text on violet */
 
-  /* type */
-  --font-serif: "Iowan Old Style", "Charter", "Bitstream Charter", "Sitka Text", Cambria, Georgia, "DejaVu Serif", serif;
-  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", "Liberation Mono", monospace;
+  color-scheme: dark;
+}
 
-  /* layout */
-  --text-w: 680px;   /* reading column */
-  --note-w: 240px;   /* sidenote margin column */
-  --note-gap: 40px;
-  --page-w: 960px;   /* = text + gap + notes; wide figures use the full width */
-  --pad: 1.25rem;    /* page side padding */
+[data-theme="light"] {
+  --bg: #F4F3F8;
+  --panel: #FFFFFF;
+  --panel-grad: #F3EEFD;
+  --panel-raised: #F1EFF6;
+  --border: #E3E0EC;
+  --text: #16151B;
+  --muted: #64626F;
+  --violet: #7C3AED;
+  --violet-soft: #8B5CF6;
+  --violet-fill: rgba(124, 58, 237, 0.14);
+  --lavender: #E6DAFE;
+  --lavender-ink: #1B1530;
+  --gold: #F5C542;
+  --gold-ink: #1A1405;
+  --ok: #15803D;
+  --bad: #E11D48;
+  --on-accent: #FFFFFF;
 
   color-scheme: light;
 }
 
-[data-theme="dark"] {
-  --bg: #141416;
-  --ink: #e8e6e1;
-  --muted: #9b9ba3;
-  --rule: #2f2f35;
-  --accent: #7ea2ff;
-  --accent-soft: #1d2640;
-  --ok: #5cc28f;
-  --bad: #f08a80;
+:root {
+  /* shape */
+  --radius: 20px;      /* panels */
+  --radius-md: 14px;   /* chips, cards inside panels */
+  --radius-sm: 10px;   /* buttons, inputs */
 
-  color-scheme: dark;
+  /* type */
+  --font: "Montserrat", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace;
+
+  /* layout */
+  --rail-w: 72px;
+  --side-w: 300px;
+  --main-max: 880px;
+  --gap: 24px;
 }
