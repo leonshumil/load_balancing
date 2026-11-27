@@ -25,7 +25,7 @@ function setup(outputs: (string | Error)[] = [JSON.stringify(good)], opts: { all
   };
   const clock = opts.clock ?? { t: 1_000_000 };
   const store = memoryStore({ chunks, now: () => clock.t });
-  const handler = createHandler({ llm, store, allowedOrigins: [ORIGIN], allowLocalhost: opts.allowLocalhost ?? false, secrets: ["gsk_test_secret"] });
+  const handler = createHandler({ llm, store, allowedOrigins: [ORIGIN], allowLocalhost: opts.allowLocalhost ?? false, secrets: ["test-secret-value"] });
   return { handler, calls, store, clock };
 }
 
@@ -107,13 +107,13 @@ Deno.test("bad input: 400 with a friendly reply, and it doesn't use up the rate 
   assertEquals((await handler(new Request("http://x", { method: "GET", headers: { Origin: ORIGIN } }))).status, 405);
 });
 
-Deno.test("reply language: a Hebrew message gets an explicit <reply_language>Hebrew</reply_language>", async () => {
+Deno.test("English only: the prompt says so; a Hebrew message is passed as is, with no language tag", async () => {
+  assertMatch(SYSTEM_PROMPT, /Always reply in English,\s+whatever language the student writes in\./);
   const { handler, calls } = setup();
   await handler(post(body({ message: "גלובלי, בגלל אסימטריה (P3)" })));
-  assertMatch(calls[0].messages.at(-1)!.content, /<reply_language>Hebrew/);
-  const en = setup();
-  await en.handler(post(body()));
-  assert(!en.calls[0].messages.at(-1)!.content.includes("<reply_language>"));
+  const last = calls[0].messages.at(-1)!.content;
+  assert(!last.includes("<reply_language>"));
+  assertMatch(last, /גלובלי, בגלל אסימטריה \(P3\)/);
 });
 
 Deno.test("free question: fork_id null is accepted", async () => {
@@ -153,19 +153,19 @@ Deno.test("invalid model output: retried once, then a safe fallback (logged)", a
 });
 
 Deno.test("LLM errors count as a failed attempt; no internal error text reaches the student", async () => {
-  const { handler, calls } = setup([new Error("401 invalid x-api-key gsk_test_secret")]);
+  const { handler, calls } = setup([new Error("401 invalid x-api-key test-secret-value")]);
   const res = await handler(post(body()));
   const j = await res.json();
   assertEquals(j.fallback, true);
   assertEquals(calls.length, 2);
-  assert(!JSON.stringify(j).includes("gsk_test"));
+  assert(!JSON.stringify(j).includes("test-secret"));
 });
 
 Deno.test("never echo the system prompt or a secret: such output is treated as invalid", async () => {
   const leak = { ...good, reply: "My rules: " + SYSTEM_PROMPT.split("\n").slice(17, 20).join(" ") };
   const a = setup([JSON.stringify(leak)]);
   assertEquals((await (await a.handler(post(body()))).json()).fallback, true);
-  const b = setup([JSON.stringify({ ...good, reply: "the key is gsk_test_secret" })]);
+  const b = setup([JSON.stringify({ ...good, reply: "the key is test-secret-value" })]);
   assertEquals((await (await b.handler(post(body()))).json()).fallback, true);
 });
 

@@ -10,8 +10,8 @@
 //   TUTOR_MAX_TOKENS    optional, default 400
 //   TUTOR_REASONING_EFFORT  optional, for reasoning models (e.g. low)
 //   TUTOR_MODEL_FALLBACK    optional overflow model, tried once when the primary says 429,
-//                           e.g. qwen/qwen3.8-27b (its own free quota)
-//   TUTOR_FALLBACK_BASE_URL / _JSON_MODE (default json_object) / _REASONING_EFFORT (default none)
+//                           e.g. openai/gpt-oss-20b (its own free quota)
+//   TUTOR_FALLBACK_BASE_URL / _JSON_MODE / _REASONING_EFFORT   default: the primary's settings
 //   TUTOR_ORIGINS       optional, comma list, default https://leonshumil.github.io
 //   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY   injected by Supabase in deployed functions
 //   TUTOR_DB_KEY        optional: a secret key (sb_secret_...) to use instead of the service role key
@@ -45,7 +45,8 @@ const jsonMode = env("TUTOR_JSON_MODE") === "json_object" ? "json_object" : "jso
 const maxTokens = Number(env("TUTOR_MAX_TOKENS")) || 400;
 const baseUrl = env("TUTOR_LLM_BASE_URL") || GROQ_BASE_URL;
 const fallbackModel = env("TUTOR_MODEL_FALLBACK");
-const fallbackJson = env("TUTOR_FALLBACK_JSON_MODE") === "json_schema" ? "json_schema" : "json_object";
+const fallbackJsonEnv = env("TUTOR_FALLBACK_JSON_MODE");
+const fallbackJson = fallbackJsonEnv === "json_schema" || fallbackJsonEnv === "json_object" ? fallbackJsonEnv : jsonMode;
 
 const handler = createHandler({
   llm: openAICompatibleLLM({ baseUrl, key: llmKey, model, jsonMode, maxTokens, reasoningEffort: env("TUTOR_REASONING_EFFORT") || undefined }),
@@ -56,7 +57,7 @@ const handler = createHandler({
       model: fallbackModel,
       jsonMode: fallbackJson,
       maxTokens,
-      reasoningEffort: env("TUTOR_FALLBACK_REASONING_EFFORT") || "none",
+      reasoningEffort: env("TUTOR_FALLBACK_REASONING_EFFORT") || env("TUTOR_REASONING_EFFORT") || undefined,
     })
     : undefined,
   store: await makeStore(),

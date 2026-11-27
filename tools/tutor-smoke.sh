@@ -2,10 +2,11 @@
 # Smoke test for the tutor function (start it first with tools/tutor-dev.sh).
 #
 #  1. Real calls to the primary model: F1-F5 (F1 and F2 twice, as two students, to see whether
-#     the shared prefix gets cached; F2's second message is in Hebrew), a free question.
+#     the shared prefix gets cached; F2's second message is written in Hebrew and must still
+#     get an English reply), a free question.
 #  2. Our limits: too fast, too long, wrong origin, CORS preflight (no model calls).
 #  3. Forced 429s, with a local stub in place of Groq:
-#     a. primary 429 -> the real overflow model answers (English + Hebrew)
+#     a. primary 429 -> the real overflow model answers (English, and Hebrew in -> English out)
 #     b. primary and overflow both 429 -> {error: "quota"}, one call each, no retry.
 #
 # Every model call prints: model, status, prompt / cached / completion tokens, time, and
@@ -21,7 +22,7 @@ URL="${TUTOR_URL:-http://localhost:8787}"
 ORIGIN="${TUTOR_ORIGIN:-https://leonshumil.github.io}"
 PACE="${SMOKE_PACE:-25}"
 PRIMARY="${TUTOR_MODEL:-openai/gpt-oss-120b}"
-OVERFLOW="${TUTOR_MODEL_FALLBACK:-qwen/qwen3.8-27b}"
+OVERFLOW="${TUTOR_MODEL_FALLBACK:-openai/gpt-oss-20b}"
 RUN="smoke-$(date +%s)"
 TMP="$(mktemp -d)"
 fails=0
@@ -60,11 +61,11 @@ for c in json.loads(sys.argv[1]):
 PY
 }
 
-# check_json <fork|null> <expected pick> <hebrew?>: the approved shape, not a fallback
+# check_json <fork|null> <expected pick> <lang of the message>: the approved shape, not a fallback, reply in English
 check_json() {
   python3 -I - "$1" "$2" "$3" "$BODY" <<'PY'
 import json, re, sys
-fork, expected, hebrew, body = sys.argv[1:5]
+fork, expected, lang, body = sys.argv[1:5]
 options = {"F1": ["centralized", "distributed"], "F2": ["host-based", "in-network"], "F3": ["local", "global"],
            "F4": ["link-state", "leaf-to-leaf"], "F5": ["per-flow", "per-flowlet", "per-packet"], "null": []}
 try:
@@ -79,7 +80,7 @@ if o.get("detected_pick") not in options[fork] + [None]: errs.append(f"detected_
 if not isinstance(o.get("properties_mentioned"), list) or not set(o["properties_mentioned"]) <= {"P1","P2","P3","P4","P5"}: errs.append("properties_mentioned")
 if not isinstance(o.get("ready_to_reveal"), bool): errs.append("ready_to_reveal")
 if o.get("fallback") is not False: errs.append("fallback reply (output failed validation twice, or the call failed)")
-if hebrew == "he" and not re.search(r"[֐-׿]", o.get("reply", "")): errs.append("reply is not in Hebrew")
+if re.search(r"[\u0590-\u05FF]", o.get("reply", "")): errs.append("reply is not in English (contains Hebrew)")
 if errs:
     print("; ".join(errs)); sys.exit(1)
 note = "" if expected in ("-", o["detected_pick"]) else f"  [note: expected pick {expected}]"
@@ -131,7 +132,7 @@ real_turn "$URL" "F1 again (other student; cache check)" "$RUN-F1b" F1 distribut
 pace
 real_turn "$URL" "F2" "$RUN-F2a" F2 in-network en "In-network. Operators often can't change the end-host stack, so it has to be transport independent (P2)."
 pace
-real_turn "$URL" "F2 in Hebrew (other student; cache check)" "$RUN-F2b" F2 in-network he "אני חושב שבתוך הרשת, כי המפעילים לא שולטים במחסנית של השרתים, אז זה חייב להיות transport independent (P2)."
+real_turn "$URL" "F2 written in Hebrew -> English reply (other student; cache check)" "$RUN-F2b" F2 in-network he "אני חושב שבתוך הרשת, כי המפעילים לא שולטים במחסנית של השרתים, אז זה חייב להיות transport independent (P2)."
 pace
 real_turn "$URL" "F3" "$RUN-F3" F3 global en "Global. With asymmetry a switch's own links don't show the congestion further downstream (P3)."
 pace
@@ -161,7 +162,7 @@ if ! command -v deno >/dev/null; then echo "  SKIP (deno not on PATH)"; fails=$(
     TUTOR_LLM_BASE_URL=http://127.0.0.1:8788 TUTOR_FALLBACK_BASE_URL=https://api.groq.com/openai/v1
   real_turn http://127.0.0.1:8789 "F3 via overflow" "$RUN-ovf1" F3 global en "Global, because a switch only sees its own links and misses downstream congestion (P3)."
   pace
-  real_turn http://127.0.0.1:8789 "F3 in Hebrew via overflow (primary cooling down: not called)" "$RUN-ovf2" F3 global he "גלובלי, כי מתג רואה רק את הקישורים שלו ולא את העומס בהמשך הדרך (P3)."
+  real_turn http://127.0.0.1:8789 "F3 written in Hebrew via overflow -> English reply (primary cooling down: not called)" "$RUN-ovf2" F3 global he "גלובלי, כי מתג רואה רק את הקישורים שלו ולא את העומס בהמשך הדרך (P3)."
   if [ "$(grep -c . "$TMP/stub-models.log")" = "1" ]; then pass "the primary was asked once, then skipped during its cooldown"; else fail "primary calls at the stub: $(tr '\n' ' ' <"$TMP/stub-models.log")"; fi
 
   echo "  b. both models say 429 -> {error: \"quota\"}"

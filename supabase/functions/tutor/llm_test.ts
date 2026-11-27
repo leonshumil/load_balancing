@@ -15,13 +15,13 @@ function fakeFetch(res: () => Response) {
 const ok = (content: string) =>
   new Response(JSON.stringify({ model: "m-1", choices: [{ message: { content }, finish_reason: "stop" }], usage: { prompt_tokens: 50, completion_tokens: 9 } }));
 const req = { system: "SYS", messages: [{ role: "user" as const, content: "hi" }], schema: OUTPUT_SCHEMA };
-const cfg = { baseUrl: "https://api.example/v1/", key: "gsk_secret_key_123", model: "m", jsonMode: "json_schema" as const, maxTokens: 400 };
+const cfg = { baseUrl: "https://api.example/v1/", key: "test-secret-key-123", model: "m", jsonMode: "json_schema" as const, maxTokens: 400 };
 
 Deno.test("request: chat/completions, bearer key, system first, strict json_schema, max_completion_tokens", async () => {
   const { f, seen } = fakeFetch(() => ok('{"a":1}'));
   const r = await openAICompatibleLLM({ ...cfg, fetch: f, reasoningEffort: "low" })(req);
   assertEquals(seen[0].url, "https://api.example/v1/chat/completions");
-  assertEquals((seen[0].init.headers as Record<string, string>).Authorization, "Bearer gsk_secret_key_123");
+  assertEquals((seen[0].init.headers as Record<string, string>).Authorization, "Bearer test-secret-key-123");
   const body = JSON.parse(seen[0].init.body as string);
   assertEquals(body.model, "m");
   assertEquals(body.messages, [{ role: "system", content: "SYS" }, { role: "user", content: "hi" }]);
@@ -49,12 +49,12 @@ Deno.test("429 -> QuotaError with retry-after, fetched once", async () => {
 });
 
 Deno.test("other errors -> LLMError with status and provider code only, never the key", async () => {
-  const { f } = fakeFetch(() => new Response(JSON.stringify({ error: { code: "json_validate_failed", message: "echo gsk_secret_key_123" } }), { status: 400 }));
+  const { f } = fakeFetch(() => new Response(JSON.stringify({ error: { code: "json_validate_failed", message: "echo test-secret-key-123" } }), { status: 400 }));
   const e = await assertRejects(() => openAICompatibleLLM({ ...cfg, fetch: f })(req), LLMError);
   assertEquals(e.message, "HTTP 400 json_validate_failed");
-  const net = ((() => Promise.reject(new TypeError("boom gsk_secret_key_123"))) as unknown) as typeof fetch;
+  const net = ((() => Promise.reject(new TypeError("boom test-secret-key-123"))) as unknown) as typeof fetch;
   const e2 = await assertRejects(() => openAICompatibleLLM({ ...cfg, fetch: net })(req), LLMError);
-  assert(!e2.message.includes("gsk_"));
+  assert(!e2.message.includes("test-secret"));
 });
 
 Deno.test("missing content -> empty text (the handler then retries / falls back)", async () => {
