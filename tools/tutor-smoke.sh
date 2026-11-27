@@ -1,0 +1,181 @@
+#!/usr/bin/env bash
+# Smoke test for the tutor function (start it first with tools/tutor-dev.sh).
+#
+#  1. Real calls to the primary model: F1-F5 (F1 and F2 twice, as two students, to see whether
+#     the shared prefix gets cached; F2's second message is written in Hebrew and must still
+#     get an English reply), a free question.
+#  2. Our limits: too fast, too long, wrong origin, CORS preflight (no model calls).
+#  3. Forced 429s, with a local stub in place of Groq:
+#     a. primary 429 -> the real overflow model answers (English, and Hebrew in -> English out)
+#     b. primary and overflow both 429 -> {error: "quota"}, one call each, no retry.
+#
+# Every model call prints: model, status, prompt / cached / completion tokens, time, and
+# Groq's rate-limit headers (TPM left, requests left today). Real calls are spaced
+# SMOKE_PACE seconds apart (default 25) so the test itself stays under 8K tokens/minute.
+# Uses ~10 requests of the free quota. Needs deno, python3, curl.
+#
+#   tools/tutor-smoke.sh                                   # local, http://localhost:8787
+#   TUTOR_URL=https://<ref>.supabase.co/functions/v1/tutor tools/tutor-smoke.sh   # deployed (parts 1-2)
+set -uo pipefail
+cd "$(dirname "$0")/.."
+URL="${TUTOR_URL:-http://localhost:8787}"
+ORIGIN="${TUTOR_ORIGIN:-https://leonshumil.github.io}"
+PACE="${SMOKE_PACE:-25}"
+PRIMARY="${TUTOR_MODEL:-openai/gpt-oss-120b}"
+OVERFLOW="${TUTOR_MODEL_FALLBACK:-openai/gpt-oss-20b}"
+RUN="smoke-$(date +%s)"
+TMP="$(mktemp -d)"
+fails=0
+pids=()
+cleanup() { for p in "${pids[@]}"; do kill "$p" 2>/dev/null; done; rm -rf "$TMP"; }
+trap cleanup EXIT
+
+pass() { printf '  \033[32mPASS\033[0m %s\n' "$1"; }
+fail() { printf '  \033[31mFAIL\033[0m %s\n' "$1"; fails=$((fails + 1)); }
+pace() { printf '  (waiting %ss for the per-minute token limit)\n' "$PACE"; sleep "$PACE"; }
+
+# post <url> <session> <fork|null> <message>  -> STATUS, BODY, CALLS (X-Tutor-Calls header, local only)
+post() {
+  local payload
+  payload=$(python3 -I -c 'import json,sys; f=sys.argv[2]; print(json.dumps({"session_id": sys.argv[1], "fork_id": None if f == "null" else f, "history": [], "message": sys.argv[3], "state": {"picks": {}, "properties_used": {}}}))' "$2" "$3" "$4")
+  STATUS=$(curl -sS -m 90 -o "$TMP/body" -D "$TMP/head" -w '%{http_code}' -X POST "$1" -H "Content-Type: application/json" -H "Origin: $ORIGIN" --data-binary "$payload" 2>/dev/null) || STATUS=000
+  BODY=$(cat "$TMP/body" 2>/dev/null)
+  CALLS=$(grep -i '^x-tutor-calls:' "$TMP/head" 2>/dev/null | sed 's/^[^:]*: *//; s/\r$//')
+}
+
+# One line per model call: what the provider charged us, and what's left.
+show_calls() {
+  [ -z "$CALLS" ] && { echo "      (no per-call data: not a local debug run)"; return; }
+  python3 -I - "$CALLS" <<'PY'
+import json, sys
+for c in json.loads(sys.argv[1]):
+    line = f"      call: {c['model']:<22} {c['status']:<7}"
+    if "prompt" in c:
+        pct = f" ({100 * c['cached'] // c['prompt']}%)" if c["prompt"] else ""
+        line += f" prompt={c['prompt']} cached={c['cached']}{pct} completion={c['completion']}"
+    line += f" {c['ms']}ms"
+    lim = c.get("limits")
+    if lim:
+        line += f" | TPM left {lim.get('tpmLeft')}/{lim.get('tpm')}, requests left today {lim.get('rpdLeft')}/{lim.get('rpd')}"
+    print(line)
+PY
+}
+
+# check_json <fork|null> <expected pick> <lang of the message>: the approved shape, not a fallback, reply in English
+check_json() {
+  python3 -I - "$1" "$2" "$3" "$BODY" <<'PY'
+import json, re, sys
+fork, expected, lang, body = sys.argv[1:5]
+options = {"F1": ["centralized", "distributed"], "F2": ["host-based", "in-network"], "F3": ["local", "global"],
+           "F4": ["link-state", "leaf-to-leaf"], "F5": ["per-flow", "per-flowlet", "per-packet"], "null": []}
+try:
+    o = json.loads(body)
+except Exception as e:
+    print(f"not JSON: {e}"); sys.exit(1)
+errs = []
+if set(o) != {"reply", "cites", "detected_pick", "properties_mentioned", "ready_to_reveal", "fallback"}: errs.append(f"keys {sorted(o)}")
+if not isinstance(o.get("reply"), str) or not o["reply"].strip(): errs.append("empty reply")
+if not isinstance(o.get("cites"), list) or not all(isinstance(c, str) for c in o["cites"]): errs.append("cites")
+if o.get("detected_pick") not in options[fork] + [None]: errs.append(f"detected_pick {o.get('detected_pick')!r}")
+if not isinstance(o.get("properties_mentioned"), list) or not set(o["properties_mentioned"]) <= {"P1","P2","P3","P4","P5"}: errs.append("properties_mentioned")
+if not isinstance(o.get("ready_to_reveal"), bool): errs.append("ready_to_reveal")
+if o.get("fallback") is not False: errs.append("fallback reply (output failed validation twice, or the call failed)")
+if re.search(r"[\u0590-\u05FF]", o.get("reply", "")): errs.append("reply is not in English (contains Hebrew)")
+if errs:
+    print("; ".join(errs)); sys.exit(1)
+note = "" if expected in ("-", o["detected_pick"]) else f"  [note: expected pick {expected}]"
+print(f"pick={o['detected_pick']} props={o['properties_mentioned']} cites={o['cites']} reveal={o['ready_to_reveal']} words={len(o['reply'].split())}{note}")
+print("      reply: " + o["reply"].replace("\n", " ")[:260])
+PY
+}
+
+real_turn() { # real_turn <url> <label> <session> <fork> <expected pick> <lang> <message>
+  local t0 ms detail
+  t0=$(date +%s%N)
+  post "$1" "$3" "$4" "$7"
+  ms=$(( ($(date +%s%N) - t0) / 1000000 ))
+  if [ "$STATUS" != "200" ]; then fail "$2: HTTP $STATUS $BODY"; show_calls; return; fi
+  if detail=$(check_json "$4" "$5" "$6"); then pass "$2 (${ms} ms) $detail"; else fail "$2: $detail"; fi
+  show_calls
+}
+
+# A stand-in for Groq that answers every call with 429 and records the model it was asked for.
+start_stub() { # start_stub <port> <model log>
+  python3 -I -c '
+import http.server, json, sys
+log = sys.argv[2]
+class H(http.server.BaseHTTPRequestHandler):
+    def do_POST(self):
+        body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
+        open(log, "a").write(body.get("model", "?") + "\n")
+        self.send_response(429); self.send_header("retry-after", "60"); self.send_header("Content-Type", "application/json"); self.end_headers()
+        self.wfile.write(b"{\"error\":{\"message\":\"Rate limit reached\",\"code\":\"rate_limit_exceeded\"}}")
+    def log_message(self, *a): pass
+http.server.HTTPServer(("127.0.0.1", int(sys.argv[1])), H).serve_forever()' "$1" "$2" &
+  pids+=($!)
+}
+
+start_tutor() { # start_tutor <port> <env...>: another local tutor instance
+  local port="$1"; shift
+  env "$@" TUTOR_DEV=1 TUTOR_PORT="$port" TUTOR_CHUNKS_FILE=tools/.out/chunks.json \
+    deno run --allow-net --allow-env --allow-read --env-file=supabase/functions/.env supabase/functions/tutor/index.ts >"$TMP/tutor-$port.log" 2>&1 &
+  pids+=($!)
+  for _ in $(seq 1 60); do curl -s -o /dev/null "http://127.0.0.1:$port" && return; sleep 0.5; done
+  echo "  could not start the tutor on port $port"; cat "$TMP/tutor-$port.log"
+}
+
+echo "Tutor smoke test against $URL (primary $PRIMARY, overflow $OVERFLOW)"
+echo "1. Real calls, one per fork (F1 and F2 twice, as different students, to check prompt caching)"
+real_turn "$URL" "F1" "$RUN-F1a" F1 distributed en "Distributed. Datacenter traffic is bursty, so a central scheduler would react too slowly (P1)."
+pace
+real_turn "$URL" "F1 again (other student; cache check)" "$RUN-F1b" F1 distributed en "Centralized, because one controller sees the whole fabric and can plan the best paths."
+pace
+real_turn "$URL" "F2" "$RUN-F2a" F2 in-network en "In-network. Operators often can't change the end-host stack, so it has to be transport independent (P2)."
+pace
+real_turn "$URL" "F2 written in Hebrew -> English reply (other student; cache check)" "$RUN-F2b" F2 in-network he "אני חושב שבתוך הרשת, כי המפעילים לא שולטים במחסנית של השרתים, אז זה חייב להיות transport independent (P2)."
+pace
+real_turn "$URL" "F3" "$RUN-F3" F3 global en "Global. With asymmetry a switch's own links don't show the congestion further downstream (P3)."
+pace
+real_turn "$URL" "F4" "$RUN-F4" F4 leaf-to-leaf en "Leaf to leaf, because it is deployable with an overlay and near-optimal for leaf-spine (P4, P5)."
+pace
+real_turn "$URL" "F5" "$RUN-F5" F5 per-flowlet en "Per flowlet: no TCP changes are needed and packets aren't reordered (P2)."
+pace
+real_turn "$URL" "free question" "$RUN-free" null - en "What is a flowlet, in one sentence?"
+
+echo "2. Our limits (no model calls)"
+post "$URL" "$RUN-free" null "And a flow?"   # same session as the free question, right after it
+if [ "$STATUS" = "429" ] && grep -q '"too_fast"' <<<"$BODY"; then pass "second message within 3 s -> 429 too_fast"; else fail "too_fast: HTTP $STATUS $BODY"; fi
+post "$URL" "$RUN-long" F1 "$(printf 'x%.0s' $(seq 1 601))"
+if [ "$STATUS" = "400" ] && grep -q '"too_long"' <<<"$BODY"; then pass "601 characters -> 400 too_long"; else fail "too_long: HTTP $STATUS $BODY"; fi
+code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$URL" -H "Origin: https://evil.example" -H "Content-Type: application/json" -d '{}')
+if [ "$code" = "403" ]; then pass "other origin -> 403"; else fail "origin check: HTTP $code"; fi
+code=$(curl -s -o /dev/null -w '%{http_code}' -X OPTIONS "$URL" -H "Origin: $ORIGIN" -H "Access-Control-Request-Method: POST")
+if [ "$code" = "204" ]; then pass "CORS preflight from $ORIGIN -> 204"; else fail "preflight: HTTP $code"; fi
+
+echo "3. Forced 429s (a local stub stands in for Groq)"
+if ! command -v deno >/dev/null; then echo "  SKIP (deno not on PATH)"; fails=$((fails + 1)); else
+  [ -f tools/.out/chunks.json ] || node tools/build-chunks.mjs >/dev/null
+  start_stub 8788 "$TMP/stub-models.log"
+
+  echo "  a. $PRIMARY says 429 -> $OVERFLOW (real) answers"
+  start_tutor 8789 TUTOR_MODEL="$PRIMARY" TUTOR_REASONING_EFFORT=low TUTOR_MODEL_FALLBACK="$OVERFLOW" \
+    TUTOR_LLM_BASE_URL=http://127.0.0.1:8788 TUTOR_FALLBACK_BASE_URL=https://api.groq.com/openai/v1
+  real_turn http://127.0.0.1:8789 "F3 via overflow" "$RUN-ovf1" F3 global en "Global, because a switch only sees its own links and misses downstream congestion (P3)."
+  pace
+  real_turn http://127.0.0.1:8789 "F3 written in Hebrew via overflow -> English reply (primary cooling down: not called)" "$RUN-ovf2" F3 global he "גלובלי, כי מתג רואה רק את הקישורים שלו ולא את העומס בהמשך הדרך (P3)."
+  if [ "$(grep -c . "$TMP/stub-models.log")" = "1" ]; then pass "the primary was asked once, then skipped during its cooldown"; else fail "primary calls at the stub: $(tr '\n' ' ' <"$TMP/stub-models.log")"; fi
+
+  echo "  b. both models say 429 -> {error: \"quota\"}"
+  : >"$TMP/stub-models.log"
+  start_tutor 8790 GROQ_API_KEY=dummy-not-a-key TUTOR_MODEL="$PRIMARY" TUTOR_MODEL_FALLBACK="$OVERFLOW" \
+    TUTOR_LLM_BASE_URL=http://127.0.0.1:8788 TUTOR_FALLBACK_BASE_URL=http://127.0.0.1:8788
+  post http://127.0.0.1:8790 "$RUN-quota" F1 "Distributed, because of P1."
+  asked=$(tr '\n' ' ' <"$TMP/stub-models.log")
+  if [ "$STATUS" = "429" ] && python3 -I -c 'import json,sys; o=json.loads(sys.argv[1]); assert o["error"] == "quota" and o["reply"]' "$BODY" 2>/dev/null \
+     && [ "$asked" = "$PRIMARY $OVERFLOW " ]; then
+    pass "HTTP 429 {error: \"quota\"}; models asked, in order: $asked(one call each, no retry)"
+  else fail "quota: HTTP $STATUS $BODY; models asked: $asked"; fi
+  show_calls
+fi
+
+if [ "$fails" -eq 0 ]; then echo "ALL PASSED"; else echo "$fails FAILED"; exit 1; fi

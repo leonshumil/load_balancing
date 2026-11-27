@@ -5,3 +5,8 @@ node_modules/
 .DS_Store
 .env
 docs/
+supabase/.temp/
+supabase/.branches/
+tools/*-report.md
+# generated from the private paper text; never commit
+tools/.out/
