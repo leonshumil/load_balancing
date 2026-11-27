@@ -103,13 +103,13 @@ test("switching modes keeps the walk where it was", () => {
   assert.equal(currentForkId(s), "F2");
 });
 
-test("requestBody: session, class code, fork, last 6 turns as user/assistant, picks + properties", () => {
+test("requestBody: session, fork, last 6 turns as user/assistant, picks + properties; no class code", () => {
   let s = live();
   for (let i = 0; i < 5; i++) s = applyReply(addStudent(s, `q${i}`), reply({ reply: `a${i}` })).state;
   s = applyReply(addStudent(s, "Distributed (P1)"), reply({ detected_pick: "distributed", properties_mentioned: ["P1"] })).state;
-  const b = requestBody(s, "and P5?", "conga-42");
+  const b = requestBody(s, "and P5?");
   assert.equal(b.session_id, "sid-1234567");
-  assert.equal(b.class_code, "conga-42");
+  assert.ok(!("class_code" in b));
   assert.equal(b.fork_id, "F1");
   assert.equal(b.message, "and P5?");
   assert.equal(b.history.length, 6);
@@ -119,7 +119,7 @@ test("requestBody: session, class code, fork, last 6 turns as user/assistant, pi
   // after the walk, questions are free questions (no fork)
   let done = live();
   for (let i = 0; i < FORKS.length; i++) done = advance(revealCurrent(done, "button"));
-  assert.equal(requestBody(done, "what is DRE?", "c").fork_id, null);
+  assert.equal(requestBody(done, "what is DRE?").fork_id, null);
 });
 
 test("treeView: current fork glows, revealed forks show the path and the rejected branches with costs", () => {

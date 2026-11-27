@@ -19,8 +19,6 @@ const propName = Object.fromEntries(PROPERTIES.map((p) => [p.id, p.name]));
 
 const OFFLINE_HINT = {
   disabled: "The AI tutor is switched off for now. Guided mode: choose a branch, then the properties that support it.",
-  no_code: "Guided mode: choose a branch, then the properties that support it.",
-  class_code: "That class code didn't work: ask your lecturer for the code. Meanwhile, guided mode: choose a branch, then the properties that support it.",
   quota: "The tutor has used up its free quota for now, so carry on in guided mode. You can try the tutor again later.",
   limit: "You've used all your tutor messages; carry on in guided mode.",
   error: "The tutor isn't answering right now, so carry on in guided mode. You can try it again later.",
@@ -41,7 +39,6 @@ function h(tag, attrs = {}, ...children) {
 export function initTutor({ root, badge, progress }) {
   if (!root) return;
   let state = M.restore(store.get(M.STORE_KEY), newId);
-  let code = String(store.get(M.CODE_KEY, "") || "");
   const url = tutorUrl();
   let busy = false;
   let fb = { forkId: null, pick: null, props: new Set() }; // guided-mode selections, not saved until Check
@@ -76,9 +73,11 @@ export function initTutor({ root, badge, progress }) {
   root.replaceChildren(h("div", { class: "tutor-panes" }, treePane, chatPane), recapHost, drawer.el);
 
   // ---------- start ----------
-  if (state.mode === null && !TUTOR_ENABLED) state = M.start(state, "fallback", "disabled");
+  // No gate: the tutor starts live (guided mode only when it is switched off or fails).
+  if (state.mode === null) state = TUTOR_ENABLED ? M.start(state, "live") : M.start(state, "fallback", "disabled");
   if (state.mode === "live" && !TUTOR_ENABLED) state = M.goOffline(state, "disabled");
-  if (state.mode === "live" && !code) state = M.goOffline(state, "no_code");
+  // older saved walks that stopped at the class code carry on live
+  if (state.mode === "fallback" && (state.offline === "no_code" || state.offline === "class_code")) state = TUTOR_ENABLED ? M.goLive(state) : M.goOffline(state, "disabled");
   save();
   render();
 
@@ -135,29 +134,10 @@ export function initTutor({ root, badge, progress }) {
   }
 
   function renderControls() {
-    if (state.mode === null) return controls.replaceChildren(gate());
     const cur = M.currentForkId(state);
     if (cur && state.forks[cur].revealed) return controls.replaceChildren(nextStep(cur));
     if (state.mode === "fallback") return controls.replaceChildren(cur ? guided(cur) : offlineFooter());
     return controls.replaceChildren(liveControls(cur));
-  }
-
-  // ---------- the gate: class code or guided mode ----------
-  function gate() {
-    const input = h("input", { class: "input", type: "text", name: "class-code", autocomplete: "off", spellcheck: "false", "aria-label": "Class code", placeholder: "Class code", maxlength: "40", value: code });
-    const startLive = (e) => {
-      e.preventDefault();
-      const v = input.value.trim();
-      if (!v) { input.focus(); return; }
-      code = v;
-      store.set(M.CODE_KEY, code);
-      setState(M.start(state, "live"));
-    };
-    return h("div", { class: "tutor-gate panel-inset" },
-      h("p", {}, "Enter the class code from your lecturer to talk it through with the AI tutor."),
-      h("form", { class: "inline-form", onsubmit: startLive }, input, h("button", { class: "btn btn-primary", type: "submit" }, "Start with the tutor")),
-      h("p", { class: "tutor-note" }, "No code? ", h("button", { class: "link-btn", type: "button", onclick: () => setState(M.start(state, "fallback", "no_code")) }, "Continue in guided mode"), " (same tree, no chat)."),
-    );
   }
 
   // ---------- guided (fallback) mode ----------
@@ -197,19 +177,7 @@ export function initTutor({ root, badge, progress }) {
     const reason = state.offline ?? "error";
     const p = h("div", { class: "tutor-hint" }, h("p", {}, OFFLINE_HINT[reason] ?? OFFLINE_HINT.error));
     if (!TUTOR_ENABLED || reason === "limit") return p;
-    if (reason === "no_code" || reason === "class_code") {
-      const input = h("input", { class: "input", type: "text", autocomplete: "off", spellcheck: "false", "aria-label": "Class code", placeholder: "Class code", maxlength: "40" });
-      p.append(h("form", { class: "inline-form", onsubmit: (e) => {
-        e.preventDefault();
-        const v = input.value.trim();
-        if (!v) return input.focus();
-        code = v;
-        store.set(M.CODE_KEY, code);
-        setState(M.goLive(state));
-      } }, input, h("button", { class: "btn btn-ghost", type: "submit" }, "Use the tutor")));
-    } else {
-      p.append(h("button", { class: "btn btn-ghost", type: "button", onclick: () => setState(M.goLive(state)) }, "Try the tutor again"));
-    }
+    p.append(h("button", { class: "btn btn-ghost", type: "button", onclick: () => setState(M.goLive(state)) }, "Try the tutor again"));
     return p;
   }
 
@@ -243,7 +211,7 @@ export function initTutor({ root, badge, progress }) {
   }
 
   // ---------- live chat ----------
-  const REASON = { class_code: "class_code", quota: "quota", limit: "limit" };
+  const REASON = { quota: "quota", limit: "limit" };
 
   function liveControls(cur) {
     const input = h("textarea", { class: "input chat-input", rows: "2", maxlength: "600", placeholder: cur ? "Your branch and why (P1–P5)…" : "Ask about CONGA…", "aria-label": "Your message" });
@@ -273,7 +241,7 @@ export function initTutor({ root, badge, progress }) {
     const before = state;
     busy = true;
     note = "";
-    const body = M.requestBody(before, text, code); // history = the turns before this message
+    const body = M.requestBody(before, text); // history = the turns before this message
     state = M.addStudent(before, text);
     save();
     renderLog();
@@ -374,7 +342,7 @@ export function initTutor({ root, badge, progress }) {
 
   async function openCite(id) {
     drawer.open(`CONGA §${id.split("-p")[0]}`, "Loading…");
-    const r = await fetchPassage(url, code, id);
+    const r = await fetchPassage(url, id);
     if (r.ok) drawer.open(`CONGA §${r.data.section} · page ${r.data.page} · ${r.data.id}`, r.data.text);
     else drawer.open(`CONGA §${id}`, "This passage can't be loaded right now.");
   }

@@ -9,7 +9,6 @@ export const MAX_TURNS = 6; // turns on one fork before the client reveals it
 export const HISTORY_TURNS = 6; // earlier turns sent with each message
 export const MAX_MESSAGES = 300; // kept in the store
 export const STORE_KEY = "hw:tutor";
-export const CODE_KEY = "hw:classCode";
 
 export const OPENING =
   "Unit 4 left a gap: a FlowBender sender learns about congestion only on its own path, " +
@@ -33,7 +32,7 @@ export function initialState(sessionId) {
     v: 1,
     sessionId,
     mode: null, // null until started, then "live" or "fallback"
-    offline: null, // why we are in fallback: disabled | no_code | class_code | quota | limit | error
+    offline: null, // why we are in fallback: disabled | quota | limit | error
     fork: 0, // index into FORKS; FORKS.length = done
     forks: Object.fromEntries(FORK_IDS.map((id) => [id, { pick: null, properties: [], turns: 0, revealed: false, revealedBy: null }])),
     messages: [], // { role: "tutor"|"student", text, fork, kind?, cites? }
@@ -142,7 +141,7 @@ export function historyFor(state, n = HISTORY_TURNS) {
 }
 
 /** The body for one POST to the tutor function (the message itself not yet in the log). */
-export function requestBody(state, message, classCode) {
+export function requestBody(state, message) {
   const picks = {};
   const properties_used = {};
   for (const id of FORK_IDS) {
@@ -152,7 +151,6 @@ export function requestBody(state, message, classCode) {
   }
   return {
     session_id: state.sessionId,
-    class_code: classCode,
     fork_id: currentForkId(state),
     history: historyFor(state),
     message,

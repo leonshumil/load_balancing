@@ -12,8 +12,6 @@
 //   TUTOR_MODEL_FALLBACK    optional overflow model, tried once when the primary says 429,
 //                           e.g. openai/gpt-oss-20b (its own free quota)
 //   TUTOR_FALLBACK_BASE_URL / _JSON_MODE / _REASONING_EFFORT   default: the primary's settings
-//   TUTOR_CLASS_CODE    required: the class code students enter (case and spaces ignored);
-//                       when unset, every request gets 401
 //   TUTOR_ORIGINS       optional, comma list, default https://leonshumil.github.io
 //   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY   injected by Supabase in deployed functions
 //   TUTOR_DB_KEY        optional: a secret key (sb_secret_...) to use instead of the service role key
@@ -67,11 +65,9 @@ const handler = createHandler({
   allowLocalhost: env("TUTOR_DEV") === "1",
   secrets: [llmKey, env("TUTOR_DB_KEY"), env("SUPABASE_SERVICE_ROLE_KEY")],
   debug: env("TUTOR_DEV") === "1",
-  classCode: env("TUTOR_CLASS_CODE"),
 });
 
 console.log(`tutor: model ${model} (${jsonMode})` + (fallbackModel ? `, overflow ${fallbackModel} (${fallbackJson})` : ""));
-if (!env("TUTOR_CLASS_CODE")) console.warn("tutor: TUTOR_CLASS_CODE is not set: every request will get 401");
 const port = env("TUTOR_PORT");
 if (port) Deno.serve({ port: Number(port) }, handler);
 else Deno.serve(handler);

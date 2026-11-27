@@ -7,7 +7,6 @@ import type { Chunk } from "./retrieval.ts";
 import { SYSTEM_PROMPT } from "./prompt.ts";
 
 const ORIGIN = "https://leonshumil.github.io";
-const CODE = "conga-42";
 const chunks: Chunk[] = [
   { id: "1-p4", section: "1", page: 2, text: "Figure 1 tree.", figures: [1] },
   { id: "2.1-p1", section: "2.1", page: 2, text: "Responsive. Robust to asymmetry." },
@@ -26,14 +25,13 @@ function setup(outputs: (string | Error)[] = [JSON.stringify(good)], opts: { all
   };
   const clock = opts.clock ?? { t: 1_000_000 };
   const store = memoryStore({ chunks, now: () => clock.t });
-  const handler = createHandler({ llm, store, allowedOrigins: [ORIGIN], allowLocalhost: opts.allowLocalhost ?? false, secrets: ["test-secret-value"], classCode: CODE });
+  const handler = createHandler({ llm, store, allowedOrigins: [ORIGIN], allowLocalhost: opts.allowLocalhost ?? false, secrets: ["test-secret-value"] });
   return { handler, calls, store, clock };
 }
 
 let n = 0;
 const body = (over: Record<string, unknown> = {}) => ({
   session_id: `session-${++n}-abcdef`,
-  class_code: CODE,
   fork_id: "F3",
   history: [],
   message: "I think global, because of asymmetry (P3).",
@@ -246,7 +244,7 @@ function chain(primary: (string | Error)[], overflow: (string | Error)[], opts: 
   const clock = opts.clock ?? { t: 5_000_000 };
   const store = memoryStore({ chunks, now: () => clock.t });
   const handler = createHandler({
-    llm: mk("primary", primary), overflow: mk("overflow", overflow), store, classCode: CODE,
+    llm: mk("primary", primary), overflow: mk("overflow", overflow), store,
     allowedOrigins: [ORIGIN], allowLocalhost: false, debug: opts.debug ?? false, now: () => clock.t,
   });
   return { handler, seen, store, clock };
@@ -298,48 +296,19 @@ Deno.test("debug header: per-call model and tokens only in debug (local) mode", 
   assertEquals((await off.handler(post(body()))).headers.get("X-Tutor-Calls"), null);
 });
 
-// ---- class code (TUTOR_CLASS_CODE) ----
-Deno.test("class code: missing or wrong -> 401 {error: 'class_code'}, no model call, no turn counted", async () => {
-  const { handler, calls } = setup();
-  for (const code of [undefined, "", "wrong", "conga-4"]) {
-    const b = body({ class_code: code });
-    const res = await handler(post(b));
-    assertEquals(res.status, 401, String(code));
-    const j = await res.json();
-    assertEquals(j.error, "class_code");
-    assertEquals(j.reply, MESSAGES.class_code);
-  }
-  assertEquals(calls.length, 0);
-  // the session was not counted against the rate limit: the right code goes straight through
-  assertEquals((await handler(post(body()))).status, 200);
-});
-
-Deno.test("class code: surrounding spaces and case are forgiven", async () => {
-  const { handler } = setup();
-  assertEquals((await handler(post(body({ class_code: "  Conga-42 " })))).status, 200);
-});
-
-Deno.test("class code: not configured on the server -> every request is refused (fail closed)", async () => {
-  const store = memoryStore({ chunks });
-  const llm: LLM = () => Promise.reject(new Error("must not be called"));
-  const handler = createHandler({ llm, store, allowedOrigins: [ORIGIN], allowLocalhost: false });
-  assertEquals((await handler(post(body()))).status, 401);
-});
-
 // ---- passage endpoint (the page shows cited chunks without storing the paper) ----
-Deno.test("passage: returns one chunk's text by id, with the class code", async () => {
+Deno.test("passage: returns one chunk's text by id", async () => {
   const { handler, calls } = setup();
-  const res = await handler(post({ action: "passage", class_code: CODE, id: "2.4-p2" }));
+  const res = await handler(post({ action: "passage", id: "2.4-p2" }));
   assertEquals(res.status, 200);
   assertEquals(await res.json(), { id: "2.4-p2", section: "2.4", page: 3, text: "Handling asymmetry requires non-local knowledge." });
   assertEquals(calls.length, 0);
 });
 
-Deno.test("passage: unknown id -> 404; bad id -> 400; wrong code -> 401", async () => {
+Deno.test("passage: unknown id -> 404; bad id -> 400", async () => {
   const { handler } = setup();
-  assertEquals((await handler(post({ action: "passage", class_code: CODE, id: "9.9-p1" }))).status, 404);
-  assertEquals((await handler(post({ action: "passage", class_code: CODE, id: "../etc" }))).status, 400);
-  assertEquals((await handler(post({ action: "passage", class_code: "nope", id: "2.4-p2" }))).status, 401);
+  assertEquals((await handler(post({ action: "passage", id: "9.9-p1" }))).status, 404);
+  assertEquals((await handler(post({ action: "passage", id: "../etc" }))).status, 400);
 });
 
 Deno.test("earlier turns go in as a transcript, never as assistant messages (they made the model answer in plain text)", async () => {

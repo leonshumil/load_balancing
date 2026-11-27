@@ -239,17 +239,12 @@
 .tutor-hint { border: 1px dashed var(--border); border-radius: var(--radius-sm); padding: 10px 12px; font-size: 0.88rem; color: var(--muted); display: flex; flex-direction: column; gap: 8px; }
 .tutor-hint p { margin: 0; }
 .tutor-note { margin: 0; color: var(--muted); font-size: 0.85rem; }
-.tutor-gate { display: flex; flex-direction: column; gap: 12px; }
-.tutor-gate p { margin: 0; }
-.inline-form { display: flex; flex-wrap: wrap; gap: 8px; }
-.inline-form .input { flex: 1 1 160px; }
 .input {
   font: 500 0.95rem/1.4 var(--font); color: var(--text); background: var(--panel-raised);
   border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.65rem 0.8rem; min-width: 0;
 }
 .input:focus { outline: 2px solid var(--violet-soft); outline-offset: 1px; }
 textarea.input { resize: vertical; width: 100%; }
-.link-btn { background: none; border: 0; padding: 0; color: var(--violet-soft); font: inherit; text-decoration: underline; cursor: pointer; }
 
 /* ---- live chat ---- */
 .live { display: flex; flex-direction: column; gap: 8px; }

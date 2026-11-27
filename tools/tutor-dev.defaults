@@ -3,4 +3,3 @@
 TUTOR_MODEL=openai/gpt-oss-120b
 TUTOR_REASONING_EFFORT=low
 TUTOR_MODEL_FALLBACK=openai/gpt-oss-20b
-TUTOR_CLASS_CODE=dev-code

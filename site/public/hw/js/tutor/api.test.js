@@ -23,7 +23,7 @@ test("ok: POSTs JSON to the URL and returns the reply", async () => {
 });
 
 test("4xx/429 map to kinds and are not retried", async () => {
-  const cases = [[401, "class_code"], [429, "quota"], [429, "limit"], [429, "too_fast"], [400, "too_long"], [400, "bad_request"]];
+  const cases = [[429, "quota"], [429, "limit"], [429, "too_fast"], [400, "too_long"], [400, "bad_request"]];
   for (const [code, kind] of cases) {
     const f = seq(status(code, { error: kind, reply: "r" }));
     const r = await askTutor("u", {}, { fetchImpl: f });
@@ -57,13 +57,13 @@ test("the default timeout is 20 s (replies take 2-5 s)", async () => {
 });
 
 test("which failures switch the page to guided mode", () => {
-  assert.deepEqual([...FALLBACK_KINDS].sort(), ["class_code", "limit", "network", "quota", "timeout", "unavailable"]);
+  assert.deepEqual([...FALLBACK_KINDS].sort(), ["limit", "network", "quota", "timeout", "unavailable"]);
 });
 
-test("fetchPassage: action passage with the class code", async () => {
+test("fetchPassage: action passage by id", async () => {
   const f = seq(ok({ id: "2.4-p2", section: "2.4", page: 3, text: "t" }));
-  const r = await fetchPassage("u", "code", "2.4-p2", { fetchImpl: f });
+  const r = await fetchPassage("u", "2.4-p2", { fetchImpl: f });
   assert.equal(r.ok, true);
   assert.equal(r.data.text, "t");
-  assert.deepEqual(JSON.parse(f.calls[0].init.body), { action: "passage", class_code: "code", id: "2.4-p2" });
+  assert.deepEqual(JSON.parse(f.calls[0].init.body), { action: "passage", id: "2.4-p2" });
 });
