@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="../shared/tokens.css">
   <link rel="stylesheet" href="../shared/base.css">
   <link rel="stylesheet" href="../shared/ui.css">
-  <link rel="stylesheet" href="hw.css?v=2">
+  <link rel="stylesheet" href="hw.css?v=3">
   <script src="passage-zoom.js?v=2" defer></script>
   <script type="module">
     import { initPage } from "./main.js";
@@ -46,10 +46,9 @@
         <ul class="rail-links">
           <li><a class="rail-btn" href="#read" data-section="read" data-progress-for="read" title="1 · Read" aria-label="1 · Read"><svg class="icon"><use href="#i-read"/></svg><span class="rail-done"></span></a></li>
           <li><a class="rail-btn" href="#watch" data-section="watch" data-progress-for="watch" title="2 · Watch" aria-label="2 · Watch"><svg class="icon"><use href="#i-watch"/></svg><span class="rail-done"></span></a></li>
-          <li><a class="rail-btn" href="#path" data-section="path" data-progress-for="path" title="3 · Where does CONGA sit?" aria-label="3 · Where does CONGA sit?"><svg class="icon"><use href="#i-path"/></svg><span class="rail-done"></span></a></li>
-          <li><a class="rail-btn" href="#chat" data-section="chat" data-progress-for="chat" title="4 · Chat" aria-label="4 · Chat"><svg class="icon"><use href="#i-chat"/></svg><span class="rail-done"></span></a></li>
-          <li><a class="rail-btn" href="#lab" data-section="lab" data-progress-for="lab" title="5 · Asymmetry lab" aria-label="5 · Asymmetry lab"><svg class="icon"><use href="#i-lab"/></svg><span class="rail-done"></span></a></li>
-          <li><a class="rail-btn" href="#questions" data-section="questions" data-progress-for="questions" title="6 · Questions" aria-label="6 · Questions"><svg class="icon"><use href="#i-questions"/></svg><span class="rail-done"></span></a></li>
+          <li><a class="rail-btn" href="#tutor" data-section="tutor" data-progress-for="tutor" title="3 · Figure 1 tutor" aria-label="3 · Figure 1 tutor"><svg class="icon"><use href="#i-path"/></svg><span class="rail-done"></span></a></li>
+          <li><a class="rail-btn" href="#lab" data-section="lab" data-progress-for="lab" title="4 · Asymmetry lab" aria-label="4 · Asymmetry lab"><svg class="icon"><use href="#i-lab"/></svg><span class="rail-done"></span></a></li>
+          <li><a class="rail-btn" href="#questions" data-section="questions" data-progress-for="questions" title="5 · Questions" aria-label="5 · Questions"><svg class="icon"><use href="#i-questions"/></svg><span class="rail-done"></span></a></li>
           <li><a class="rail-btn" href="#submit" data-section="submit" title="Submit" aria-label="Submit"><svg class="icon"><use href="#i-submit"/></svg></a></li>
         </ul>
         <div class="rail-spacer"></div>
@@ -72,7 +71,7 @@
         fabrics where the paths are not equal.
       </p>
       <p>
-        Work through the six sections in order. Your answers are saved in this browser as you go,
+        Work through the five sections in order. Your answers are saved in this browser as you go,
         and one Submit at the end sends everything for the class discussion.
         About 60 minutes in total; works on a phone.
       </p>
@@ -80,10 +79,9 @@
         <ol class="chips">
           <li><a class="chip" href="#read" data-progress-for="read"><span>1 · Read</span><span class="chip-sub">12 min</span></a></li>
           <li><a class="chip" href="#watch" data-progress-for="watch"><span>2 · Watch</span><span class="chip-sub">5 min</span></a></li>
-          <li><a class="chip" href="#path" data-progress-for="path"><span>3 · Figure 1 path</span><span class="chip-sub">15 min</span></a></li>
-          <li><a class="chip" href="#chat" data-progress-for="chat"><span>4 · Chat</span><span class="chip-sub">5 min</span></a></li>
-          <li><a class="chip" href="#lab" data-progress-for="lab"><span>5 · Lab</span><span class="chip-sub">15 min</span></a></li>
-          <li><a class="chip" href="#questions" data-progress-for="questions"><span>6 · Questions</span><span class="chip-sub">8 min</span></a></li>
+          <li><a class="chip" href="#tutor" data-progress-for="tutor"><span>3 · Figure 1 tutor</span><span class="chip-sub">20 min</span></a></li>
+          <li><a class="chip" href="#lab" data-progress-for="lab"><span>4 · Lab</span><span class="chip-sub">15 min</span></a></li>
+          <li><a class="chip" href="#questions" data-progress-for="questions"><span>5 · Questions</span><span class="chip-sub">8 min</span></a></li>
           <li><a class="chip" href="#submit"><span>Submit</span><span class="chip-sub">60 min total</span></a></li>
         </ol>
       </nav>
@@ -96,13 +94,12 @@
         <ol class="progress-rows">
           <li class="progress-row" data-progress-for="read"><a href="#read"><span class="n">1</span><span>Read</span><span class="badge badge-gold">12 min</span><span class="tick"><svg><use href="#i-check"/></svg></span></a></li>
           <li class="progress-row" data-progress-for="watch"><a href="#watch"><span class="n">2</span><span>Watch</span><span class="badge badge-gold">5 min</span><span class="tick"><svg><use href="#i-check"/></svg></span></a></li>
-          <li class="progress-row" data-progress-for="path"><a href="#path"><span class="n">3</span><span>Figure 1 path</span><span class="badge badge-gold">15 min</span><span class="tick"><svg><use href="#i-check"/></svg></span></a></li>
-          <li class="progress-row" data-progress-for="chat"><a href="#chat"><span class="n">4</span><span>Chat</span><span class="badge badge-gold">5 min</span><span class="tick"><svg><use href="#i-check"/></svg></span></a></li>
-          <li class="progress-row" data-progress-for="lab"><a href="#lab"><span class="n">5</span><span>Lab</span><span class="badge badge-gold">15 min</span><span class="tick"><svg><use href="#i-check"/></svg></span></a></li>
-          <li class="progress-row" data-progress-for="questions"><a href="#questions"><span class="n">6</span><span>Questions</span><span class="badge badge-gold">8 min</span><span class="tick"><svg><use href="#i-check"/></svg></span></a></li>
+          <li class="progress-row" data-progress-for="tutor"><a href="#tutor"><span class="n">3</span><span>Figure 1 tutor</span><span class="badge badge-gold">20 min</span><span class="tick"><svg><use href="#i-check"/></svg></span></a></li>
+          <li class="progress-row" data-progress-for="lab"><a href="#lab"><span class="n">4</span><span>Lab</span><span class="badge badge-gold">15 min</span><span class="tick"><svg><use href="#i-check"/></svg></span></a></li>
+          <li class="progress-row" data-progress-for="questions"><a href="#questions"><span class="n">5</span><span>Questions</span><span class="badge badge-gold">8 min</span><span class="tick"><svg><use href="#i-check"/></svg></span></a></li>
         </ol>
         <div class="progress-stats">
-          <div class="stat"><p class="label">Done</p><div class="value" data-progress-count>0/6</div></div>
+          <div class="stat"><p class="label">Done</p><div class="value" data-progress-count>0/5</div></div>
           <div class="stat"><p class="label">Time spent</p><div class="value" data-time-spent>0 min</div></div>
         </div>
       </div>
@@ -170,25 +167,22 @@
         </video>
       </section>
 
-      <section id="path" class="part panel" aria-labelledby="path-title">
+      <section id="tutor" class="part panel" aria-labelledby="tutor-title">
         <header class="section-head">
-          <div class="section-title-row"><h2 id="path-title">3 · Where does CONGA sit?</h2><span class="badge badge-gold">15 min</span></div>
-          <p class="subtitle">Walk Figure 1's design tree from the top and decide at each fork which branch the paper takes, and why.</p>
+          <div class="section-title-row">
+            <h2 id="tutor-title">3 · Figure 1 tutor</h2><span class="badge badge-gold">20 min</span>
+            <span class="badge tutor-mode-badge" data-tutor-badge hidden>Tutor offline · guided mode</span>
+          </div>
+          <p class="subtitle">Walk Figure 1's design tree from the top. At each fork, pick a branch and argue for it with the paper's properties P1–P5. The tutor pushes back, then shows what the paper chose and what the other branch costs.</p>
         </header>
-        <div class="slot slot-tall" role="img" aria-label="Interactive Figure 1 (not built yet)">Figure 1 · design tree</div>
-      </section>
-
-      <section id="chat" class="part panel" aria-labelledby="chat-title">
-        <header class="section-head">
-          <div class="section-title-row"><h2 id="chat-title">4 · Chat</h2><span class="badge badge-gold">5 min</span></div>
-          <p class="subtitle">Reserved. The format of this section is not decided yet.</p>
-        </header>
-        <div class="slot">Chat</div>
+        <div class="tutor" data-tutor>
+          <noscript><p class="tutor-note">This section needs JavaScript.</p></noscript>
+        </div>
       </section>
 
       <section id="lab" class="part panel" aria-labelledby="lab-title">
         <header class="section-head">
-          <div class="section-title-row"><h2 id="lab-title">5 · Asymmetry lab</h2><span class="badge badge-gold">15 min</span></div>
+          <div class="section-title-row"><h2 id="lab-title">4 · Asymmetry lab</h2><span class="badge badge-gold">15 min</span></div>
           <p class="subtitle">Figures 2 and 3: split the traffic over paths of unequal capacity and compare the schemes.</p>
         </header>
         <div class="slot slot-tall" role="img" aria-label="Figure 2 lab (not built yet)">Figure 2 · lab</div>
@@ -197,7 +191,7 @@
 
       <section id="questions" class="part panel" aria-labelledby="questions-title">
         <header class="section-head">
-          <div class="section-title-row"><h2 id="questions-title">6 · Questions</h2><span class="badge badge-gold">8 min</span></div>
+          <div class="section-title-row"><h2 id="questions-title">5 · Questions</h2><span class="badge badge-gold">8 min</span></div>
           <p class="subtitle">Six to eight self-check questions, each with a Check button and instant feedback.</p>
         </header>
         <div class="slot">Questions</div>
