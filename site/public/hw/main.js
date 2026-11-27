@@ -5,6 +5,7 @@ import { createProgress, trackTime } from "../shared/progress.js";
 import { scrollSpy } from "../shared/ui.js";
 import { initTutor } from "./js/tutor/view.js";
 import { initRead, initWatch } from "./js/sections/view.js";
+import { initLab } from "./js/lab/view.js";
 
 export const SECTIONS = ["read", "watch", "tutor", "lab", "questions"];
 
@@ -14,13 +15,16 @@ export const progress = createProgress({ ids: SECTIONS, storeKey: "hw:done" });
  * Wide mode while a wide section is in view (≥1280px): it crosses the middle of the screen.
  * The progress column folds into a strip; its toggle (and hover/focus) expands it over the page.
  */
-function wideWhileInView(section) {
+function wideWhileInView(sections) {
   const app = document.querySelector(".app");
   const side = document.querySelector(".side");
   const toggle = document.querySelector(".side-toggle");
-  if (!app || !section || !("IntersectionObserver" in window)) return;
+  sections = sections.filter(Boolean);
+  if (!app || !sections.length || !("IntersectionObserver" in window)) return;
   const desktop = matchMedia("(min-width: 1280px)");
+  const seen = new Set();
   let inView = false;
+  let section = sections[0]; // the one we keep steady on screen when the layout switches
   // Switching changes the width of everything above, so their height too: switch at once and
   // scroll by the difference, so the section stays exactly where it was on the screen.
   const apply = () => {
@@ -34,7 +38,12 @@ function wideWhileInView(section) {
     if (shift) scrollBy({ top: shift, behavior: "instant" }); // not smooth: the page sets scroll-behavior: smooth
     requestAnimationFrame(() => { root.style.overflowAnchor = ""; });
   };
-  new IntersectionObserver(([e]) => { inView = e.isIntersecting; apply(); }, { rootMargin: "-45% 0px -45% 0px" }).observe(section);
+  const io = new IntersectionObserver((entries) => {
+    for (const e of entries) { if (e.isIntersecting) { seen.add(e.target); section = e.target; } else seen.delete(e.target); }
+    inView = seen.size > 0;
+    apply();
+  }, { rootMargin: "-45% 0px -45% 0px" });
+  for (const sec of sections) io.observe(sec);
   desktop.addEventListener("change", apply);
   toggle?.addEventListener("click", () => {
     const open = !side.classList.contains("is-open");
@@ -53,5 +62,6 @@ export function initPage() {
   initRead({ section: document.getElementById("read"), progress });
   initWatch({ section: document.getElementById("watch"), progress });
   initTutor({ root: document.querySelector("[data-tutor]"), badge: document.querySelector("[data-tutor-badge]"), progress });
-  wideWhileInView(document.getElementById("tutor"));
+  initLab({ root: document.querySelector("[data-lab]"), progress });
+  wideWhileInView([document.getElementById("tutor"), document.getElementById("lab")]);
 }

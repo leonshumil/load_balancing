@@ -247,6 +247,7 @@ export function congaDynamics(net, demands, { feedbackDelay = 0, gain = 0.5, rou
     minTotal: Math.min(...tail),
     maxTotal: Math.max(...tail),
     trace: hist.map((r) => r.total),
+    splits: s,
   };
 }
 
@@ -360,7 +361,7 @@ export const SCENARIOS = {
   fig17: {
     source: "CONGA §6.1, Figure 17 (Price of Anarchy 2), demand above capacity",
     ...fig17(40, 60),
-    note: "Each neighbour pair sends 60 over 40G links. Stuck in the drawing's Nash flow (no leaf can lower its bottleneck), CONGA delivers 400; ECMP delivers 600. Started from ECMP, CONGA also reaches 600.",
+    note: "Every link on CONGA's paths is full, and every other path a leaf could switch to also crosses a full link, so no leaf can lower its own bottleneck by moving: CONGA stays at 400 while ECMP delivers 600. CONGA only lands here if it starts in this state; started from ECMP, it reaches 600 too.",
   },
   ecmpWinsDelay: {
     source: "beyond the paper's model: stale feedback",
