@@ -15,7 +15,9 @@
 # Uses ~10 requests of the free quota. Needs deno, python3, curl.
 #
 #   tools/tutor-smoke.sh                                   # local, http://localhost:8787
-#   TUTOR_URL=https://<ref>.supabase.co/functions/v1/tutor tools/tutor-smoke.sh   # deployed (parts 1-2)
+#   TUTOR_URL=https://<ref>.supabase.co/functions/v1/tutor tools/tutor-smoke.sh   # deployed
+#     (parts 1-2 against the deployed function, plus: localhost origin refused and no debug
+#      header, i.e. TUTOR_DEV is off; part 3 runs only locally)
 set -uo pipefail
 cd "$(dirname "$0")/.."
 URL="${TUTOR_URL:-http://localhost:8787}"
@@ -24,6 +26,7 @@ PACE="${SMOKE_PACE:-25}"
 PRIMARY="${TUTOR_MODEL:-openai/gpt-oss-120b}"
 OVERFLOW="${TUTOR_MODEL_FALLBACK:-openai/gpt-oss-20b}"
 RUN="smoke-$(date +%s)"
+LOCAL=0; [[ "$URL" =~ ^http://(localhost|127\.0\.0\.1)(:|/|$) ]] && LOCAL=1
 TMP="$(mktemp -d)"
 fails=0
 pids=()
@@ -44,7 +47,9 @@ post() {
 }
 
 # One line per model call: what the provider charged us, and what's left.
+SAW_DEBUG=0
 show_calls() {
+  [ -n "$CALLS" ] && SAW_DEBUG=1
   [ -z "$CALLS" ] && { echo "      (no per-call data: not a local debug run)"; return; }
   python3 -I - "$CALLS" <<'PY'
 import json, sys
@@ -151,9 +156,16 @@ code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$URL" -H "Origin: https:/
 if [ "$code" = "403" ]; then pass "other origin -> 403"; else fail "origin check: HTTP $code"; fi
 code=$(curl -s -o /dev/null -w '%{http_code}' -X OPTIONS "$URL" -H "Origin: $ORIGIN" -H "Access-Control-Request-Method: POST")
 if [ "$code" = "204" ]; then pass "CORS preflight from $ORIGIN -> 204"; else fail "preflight: HTTP $code"; fi
+if [ "$LOCAL" = 0 ]; then
+  # Deployed: TUTOR_DEV must be off, so localhost is refused and there is no debug header.
+  code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$URL" -H "Origin: http://localhost:8000" -H "Content-Type: application/json" -d '{}')
+  if [ "$code" = "403" ]; then pass "localhost origin -> 403 (TUTOR_DEV is off)"; else fail "localhost origin: HTTP $code (is TUTOR_DEV set?)"; fi
+  if [ "$SAW_DEBUG" = 0 ]; then pass "no X-Tutor-Calls debug header on the deployed function"; else fail "debug header present (is TUTOR_DEV set?)"; fi
+fi
 
 echo "3. Forced 429s (a local stub stands in for Groq)"
-if ! command -v deno >/dev/null; then echo "  SKIP (deno not on PATH)"; fails=$((fails + 1)); else
+if [ "$LOCAL" = 0 ]; then echo "  skipped: local only (run tools/tutor-smoke.sh without TUTOR_URL on a machine with deno)"
+elif ! command -v deno >/dev/null; then echo "  SKIP (deno not on PATH)"; fails=$((fails + 1)); else
   [ -f tools/.out/chunks.json ] || node tools/build-chunks.mjs >/dev/null
   start_stub 8788 "$TMP/stub-models.log"
 
