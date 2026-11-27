@@ -1,0 +1,123 @@
+[
+  {
+    "id": "q1",
+    "type": "mc",
+    "prompt": "Figure 2: L0 sends 100 Gbps of TCP traffic to L1, and the S1→L1 link has only 40 Gbps. Why does the local congestion-aware scheme deliver less (80 Gbps) than ECMP (90 Gbps)?",
+    "options": [
+      { "id": "a", "text": "It picks paths at random, so its split is uneven." },
+      { "id": "b", "text": "TCP slows the flows on the lower path, so L0's link to S1 looks less congested, and the scheme moves even more traffic onto the bottlenecked path." },
+      { "id": "c", "text": "It reacts too slowly: by the time it moves traffic, the congestion has moved somewhere else." },
+      { "id": "d", "text": "It sends packets of one flow on different paths, so TCP sees reordering and slows down." }
+    ],
+    "answer": "b",
+    "explanation": "The bottleneck is S1→L1, one hop downstream, which L0 cannot see. As TCP backs off on the lower path, L0's own link (L0, S1) looks idle, so the local scheme shifts traffic there until the upper path also carries only 40 Gbps.",
+    "source": "CONGA §2.4, Fig 2",
+    "section": "lab"
+  },
+  {
+    "id": "q2",
+    "type": "numeric",
+    "prompt": "Figure 2 again (L0 sends 100 Gbps of TCP traffic to L1), but now the S1→L1 link has 20 Gbps instead of 40. The other links stay at 80 Gbps. How much does ECMP deliver?",
+    "answer": 70,
+    "tolerance": 1,
+    "unit": "Gbps",
+    "explanation": "ECMP still splits 50/50 and ignores congestion: the upper path carries its 50 Gbps, the lower path is capped at 20 Gbps by S1→L1. 50 + 20 = 70 Gbps. CONGA would move traffic up and deliver all 100. Try it in the lab's Sandbox.",
+    "source": "CONGA §2.4, Fig 2 (capacity changed; computed with the lab model)",
+    "section": "lab"
+  },
+  {
+    "id": "q3",
+    "type": "mc",
+    "prompt": "Figure 3: why can't one set of static weights (WCMP, from Unit 4) be right in both (a) and (b)?",
+    "options": [
+      { "id": "a", "text": "WCMP weights must be equal, so they can't express an uneven split." },
+      { "id": "b", "text": "The links change between (a) and (b), and WCMP doesn't learn the new capacities." },
+      { "id": "c", "text": "The best split for L1→L2 depends on how much L0→L2 traffic there is, and fixed weights can't see that." },
+      { "id": "d", "text": "WCMP hashes per flow, and the L1→L2 flow is too large to split." }
+    ],
+    "answer": "c",
+    "explanation": "The links are the same in (a) and (b); only the traffic changes. In (a) L1→L2 should split 40/40; in (b) L0→L2 fills S0→L2, so L1→L2 should avoid S0. The paper: “the ‘right’ traffic splits in asymmetric topologies depend also on the traffic matrix”.",
+    "source": "CONGA §2.4, Fig 3",
+    "section": "lab"
+  },
+  {
+    "id": "q4",
+    "type": "order",
+    "prompt": "Put CONGA's design decisions from Figure 1 in order, from the top of the tree down.",
+    "options": [
+      { "id": "global", "text": "Global, congestion-aware (not local)" },
+      { "id": "per-flowlet", "text": "Per flowlet (not per flow or per packet)" },
+      { "id": "distributed", "text": "Distributed (not centralized)" },
+      { "id": "leaf-to-leaf", "text": "Leaf to leaf (not general link state)" },
+      { "id": "in-network", "text": "In-network (not host-based)" }
+    ],
+    "answer": ["distributed", "in-network", "global", "leaf-to-leaf", "per-flowlet"],
+    "explanation": "Figure 1's thick red line: Distributed → In-Network → Global, Congestion-Aware → Leaf to Leaf → Per Flowlet (CONGA). Each step is one fork of “Path to CONGA”.",
+    "source": "CONGA Fig 1, §2",
+    "section": "tutor"
+  },
+  {
+    "id": "q5",
+    "type": "mc",
+    "prompt": "Which branch of Figure 1 does the paper reject as “Hard to deploy, increases Incast”?",
+    "options": [
+      { "id": "a", "text": "Centralized (e.g., Hedera, B4, SWAN)" },
+      { "id": "b", "text": "Host-Based (e.g., MPTCP)" },
+      { "id": "c", "text": "Local (e.g., ECMP, Flare, LocalFlow)" },
+      { "id": "d", "text": "General, Link State" }
+    ],
+    "answer": "b",
+    "explanation": "Host-based schemes live in the end-host transport, which operators often don't control, and some storage systems bypass the kernel altogether. MPTCP's many sub-flows also make traffic burstier at the access links, which hurts Incast (Figure 13).",
+    "source": "CONGA Fig 1, §2.3",
+    "section": "tutor"
+  },
+  {
+    "id": "q6",
+    "type": "multi",
+    "prompt": "CONGA carries its state in the overlay (VXLAN) header. Which fields does it use? Pick all that apply.",
+    "options": [
+      { "id": "lbtag", "text": "LBTag (4 bits)" },
+      { "id": "flowlet", "text": "Flowlet ID (16 bits)" },
+      { "id": "ce", "text": "CE (3 bits)" },
+      { "id": "hops", "text": "The list of switches on the path" },
+      { "id": "fblbtag", "text": "FB_LBTag (4 bits)" },
+      { "id": "fbmetric", "text": "FB_Metric (3 bits)" }
+    ],
+    "answer": ["lbtag", "ce", "fblbtag", "fbmetric"],
+    "explanation": "LBTag (the uplink the source leaf chose) and CE (the worst congestion seen so far, updated hop by hop) travel with the packet to the destination leaf. FB_LBTag and FB_Metric piggyback feedback for the other direction. Flowlets are tracked inside the leaf, and no path list is carried.",
+    "source": "CONGA §3.1",
+    "section": "read",
+    "anchor": "passage-4"
+  },
+  {
+    "id": "q7",
+    "type": "mc",
+    "prompt": "When can CONGA send the next burst of a flow on a different path without reordering its packets?",
+    "options": [
+      { "id": "a", "text": "After every round-trip time." },
+      { "id": "b", "text": "When the idle gap before the burst is longer than the largest difference in latency among the paths." },
+      { "id": "c", "text": "When the sender sees ECN marks, as in FlowBender." },
+      { "id": "d", "text": "Never: a flow must stay on one path until it ends." }
+    ],
+    "answer": "b",
+    "explanation": "The paper: “if the idle interval between two bursts of packets is larger than the maximum difference in latency among the paths, then the second burst can be sent along a different path than the first without reordering packets.” Those bursts are flowlets.",
+    "source": "CONGA §2.6",
+    "section": "read",
+    "anchor": "passage-5"
+  },
+  {
+    "id": "q8",
+    "type": "mc",
+    "prompt": "Unit 4 asked: who measures, who decides, who acts? In CONGA, who decides which path a flowlet takes?",
+    "options": [
+      { "id": "a", "text": "A central controller with a view of the whole fabric." },
+      { "id": "b", "text": "The sending host, after ECN feedback (like FlowBender)." },
+      { "id": "c", "text": "The source leaf switch, using congestion fed back from the destination leaf." },
+      { "id": "d", "text": "Each spine switch, using the load on its own links." }
+    ],
+    "answer": "c",
+    "explanation": "Every link measures (its DRE). The source leaf decides, on the first packet of each flowlet: it picks the uplink with the lowest maximum of local and remote congestion. Leaf-to-leaf feedback is what tells it the congestion on each path.",
+    "source": "CONGA §3, §3.5",
+    "section": "tutor"
+  }
+]
