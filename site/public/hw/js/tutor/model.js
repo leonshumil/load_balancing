@@ -1,4 +1,4 @@
-// Figure 1 tutor: the client state machine (step 12). Pure functions, no DOM.
+// Path to CONGA (section 3, Figure 1 fork by fork): the client state machine (step 12). Pure functions, no DOM.
 // Code decides, the LLM talks: picks are saved from the tutor's detected_pick, but reveals,
 // scores and the recap come from hw/js/path/model.js (CONGA Fig 1, §2.1-§2.6).
 // Every function returns a new state; the state is plain JSON (saved under STORE_KEY).

@@ -1,4 +1,4 @@
-// Section 3, the Figure 1 tutor (step 12): DOM only. The walk's rules live in model.js,
+// Section 3, Path to CONGA (Figure 1, fork by fork; step 12): DOM only. The walk's rules live in model.js,
 // the calls in api.js, the tree drawing in tree.js. Everything is saved in the store
 // (STORE_KEY), so a reload restores the chat and the tree.
 
@@ -326,7 +326,7 @@ export function initTutor({ root, badge, progress }) {
       return h("label", { class: "mda" }, h("span", { class: "label" }, q), t);
     };
     recapHost.replaceChildren(h("div", { class: "tutor-recap panel-inset" },
-      h("h3", {}, "Your walk against the paper"),
+      h("h3", {}, "Your path to CONGA, against the paper's"),
       h("div", { class: "table-scroll" }, h("table", { class: "recap-table" },
         h("thead", {}, h("tr", {}, h("th", { scope: "col" }, "Fork"), h("th", { scope: "col" }, "You"), h("th", { scope: "col", class: "col-paper" }, "Paper"), h("th", { scope: "col" }, "You used"), h("th", { scope: "col" }, "Paper's, missed"))),
         h("tbody", {}, rows))),
