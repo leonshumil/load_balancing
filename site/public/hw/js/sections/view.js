@@ -1,7 +1,7 @@
 // Read: a "Mark as read" tick per passage; the section is done when all are ticked.
-// Watch: done when the video ends (see watchMode in model.js for how, per source).
+// Watch: done at 90% of the video or when it ends (see watchMode in model.js for how, per source).
 import * as store from "../../../shared/store.js";
-import { toggleRead, readDone, cleanRead, watchMode } from "./model.js";
+import { toggleRead, readDone, cleanRead, watchMode, watchedEnough } from "./model.js";
 
 const READ_KEY = "hw:read";
 
@@ -35,7 +35,7 @@ export function initRead({ section, progress }) {
     buttons.forEach((b, i) => {
       const on = read.includes(ids[i]);
       b.setAttribute("aria-pressed", String(on));
-      b.textContent = on ? "✓ Read" : "Mark as read";
+      b.textContent = on ? "✓ Read" : "○ Mark as read";
       b.setAttribute("aria-label", `${on ? "Read" : "Mark as read"}: passage ${i + 1}`);
     });
     count.textContent = `${read.length} of ${ids.length} passages read`;
@@ -51,7 +51,8 @@ export function initWatch({ section, progress }) {
   status.className = "watch-status";
   status.setAttribute("role", "status");
   section.append(status);
-  const done = () => { progress.setDone("watch"); show(); };
+  let marked = false;
+  const done = () => { if (marked) return; marked = true; progress.setDone("watch"); show(); };
   const show = () => {
     const isDone = (store.get("hw:done", []) ?? []).includes("watch");
     status.textContent = isDone ? "✓ Watched" : "";
@@ -60,6 +61,7 @@ export function initWatch({ section, progress }) {
   const mode = watchMode(media ? { tag: media.tagName, src: media.getAttribute("src") ?? media.querySelector("source")?.getAttribute("src") ?? "" } : null);
   if (mode === "ended") {
     media.addEventListener("ended", done);
+    media.addEventListener("timeupdate", () => { if (watchedEnough(media.currentTime, media.duration)) done(); });
   } else if (mode === "youtube") {
     const url = new URL(media.src);
     if (url.searchParams.get("enablejsapi") !== "1") { url.searchParams.set("enablejsapi", "1"); media.src = url.toString(); }

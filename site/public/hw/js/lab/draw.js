@@ -1,6 +1,11 @@
-// Leaf-spine drawing for the lab (step 06). Spines on top, leaves below. A link's thickness
-// follows its load; its label is "load / capacity"; a bottleneck (>= 99%) gets a gold outline;
-// a failed link (0) is dashed. The selected demand's paths are violet, with their share.
+// Leaf-spine drawing for the lab, laid out like the paper's figures (step 14): traffic flows
+// left to right. Sending leaves on the left, spines in the middle, receiving leaves on the
+// right; a leaf that both sends and receives appears on both sides (the "unfolded" fabric).
+// Left links are uplinks (leaf->spine), right links downlinks (spine->leaf).
+// Link thickness = load; label "load / capacity"; a full link turns gold and says "full";
+// failed (0) is dashed. The selected demand's paths are violet with their share. Small dots
+// move along loaded links at a speed that follows the throughput (none with reduced motion).
+// The SVG is built once per topology and then updated, so loads animate (CSS, ~400 ms).
 // Styles in hw.css (tokens only).
 
 const SVG = "http://www.w3.org/2000/svg";
@@ -12,106 +17,140 @@ function el(tag, attrs = {}, parent) {
   return n;
 }
 
-const fmt = (x) => (Math.abs(x - Math.round(x)) < 0.05 ? String(Math.round(x)) : x.toFixed(1));
+export const fmt = (x) => (Math.abs(x - Math.round(x)) < 0.05 ? String(Math.round(x)) : x.toFixed(1));
 
-/**
- * opts: { net, baseNet, result (or null: hide numbers), demand (selected, or null), demandPaths,
- *         splitRates: { spine: Gbps } for the demand, editable, selectedLink, onLink(key) }
- */
-export function drawFabric(host, opts) {
-  const { net, baseNet, result, demand, demandPaths = [], splitRates = {}, editable, selectedLink, onLink } = opts;
-  const W = 560;
-  const H = 300;
-  const xs = (n, i) => 60 + (n === 1 ? (W - 120) / 2 : (i * (W - 120)) / (n - 1));
-  const sp = Object.fromEntries(net.spines.map((s, i) => [s, [xs(net.spines.length, i), 52]]));
-  const lf = Object.fromEntries(net.leaves.map((l, i) => [l, [xs(net.leaves.length, i), 250]]));
-  const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, class: "fabric", role: "group", "aria-label": "Leaf-spine fabric" });
+/** Which leaves go left (they send) and right (they receive). Idle leaves go left. */
+export function columns(net, demands) {
+  const src = new Set(demands.filter((d) => d.gbps > 0).map((d) => d.src));
+  const dst = new Set(demands.filter((d) => d.gbps > 0).map((d) => d.dst));
+  const left = net.leaves.filter((l) => src.has(l) || !dst.has(l));
+  const right = net.leaves.filter((l) => dst.has(l));
+  return { left, right };
+}
 
-  // physical links: any pair that exists in the paper's version or now (a failed one stays, dashed)
-  const pairs = [];
-  for (const l of net.leaves) for (const s of net.spines) {
-    const capNow = Math.max(net.cap[`${l}>${s}`] ?? 0, net.cap[`${s}>${l}`] ?? 0);
-    const capBase = Math.max(baseNet.cap[`${l}>${s}`] ?? 0, baseNet.cap[`${s}>${l}`] ?? 0);
-    if (capNow > 0 || capBase > 0) pairs.push({ l, s, key: `${l}-${s}`, cap: capNow });
-  }
-  const links = el("g", { class: "fabric-links" }, svg);
-  // Dense fabrics (Fig 17 has 20 links): label only the selected demand's links and the edited one.
-  const dense = pairs.length > 8;
-  const onPath = (p) => demand && demandPaths.includes(p.s) && (p.l === demand.src || p.l === demand.dst);
-  for (const p of pairs) {
-    const [x1, y1] = sp[p.s];
-    const [x2, y2] = lf[p.l];
-    const loadUp = result?.linkLoad[`${p.l}>${p.s}`] ?? 0;
-    const loadDown = result?.linkLoad[`${p.s}>${p.l}`] ?? 0;
-    const load = Math.max(loadUp, loadDown);
-    const util = p.cap > 0 ? load / p.cap : 0;
-    const failed = p.cap === 0;
-    const width = failed ? 1.5 : result ? 2 + (load / 80) * 10 : 3;
-    const g = el("g", { class: `fabric-link${failed ? " is-failed" : ""}${result && util >= 0.99 ? " is-bottleneck" : ""}${selectedLink === p.key ? " is-selected" : ""}${editable ? " is-editable" : ""}` }, links);
-    if (result && util >= 0.99) el("line", { x1, y1, x2, y2, class: "fabric-outline", "stroke-width": width + 6 }, g);
-    el("line", { x1, y1, x2, y2, class: "fabric-line", "stroke-width": width }, g);
-    // a wide invisible line so thin links are easy to click
-    const hit = el("line", { x1, y1, x2, y2, class: "fabric-hit" }, g);
-    // near the spine end, where crossing links are still apart; on a dense fabric the
-    // destination's links get a second, lower band so the two sets of labels don't collide
-    const t = dense && demand && p.l === demand.dst ? 0.56 : 0.28;
-    const mx = x1 + (x2 - x1) * t;
-    const my = y1 + (y2 - y1) * t;
-    const label = failed ? "failed" : result ? `${fmt(load)} / ${p.cap}` : `${p.cap}`;
-    if (!dense || onPath(p) || selectedLink === p.key) {
-      const txt = el("text", { x: mx, y: my, class: "fabric-label", "text-anchor": "middle" }, g);
-      txt.textContent = label;
+export function createFabric(host, { onLink, onSelectSource } = {}) {
+  let built = null;
+
+  function build(net, baseNet, demands) {
+    const { left, right } = columns(net, demands);
+    const spines = net.spines;
+    const capNow = (a, b) => net.cap[`${a}>${b}`] ?? 0;
+    const capBase = (a, b) => baseNet.cap[`${a}>${b}`] ?? 0;
+    const links = [];
+    for (const l of left) for (const s of spines) if (capBase(l, s) > 0 || capNow(l, s) > 0) links.push({ dir: "up", from: l, to: s, phys: `${l}-${s}`, link: `${l}>${s}` });
+    for (const r of right) for (const s of spines) if (capBase(s, r) > 0 || capNow(s, r) > 0) links.push({ dir: "down", from: s, to: r, phys: `${r}-${s}`, link: `${s}>${r}` });
+    const key = JSON.stringify([left, right, spines, links.map((x) => x.link)]);
+    if (built?.key === key) return built;
+
+    const W = 640;
+    const rows = Math.max(left.length, spines.length, right.length);
+    const H = Math.max(300, 70 * rows + 50);
+    const col = (items, x) => Object.fromEntries(items.map((n, i) => [n, [x, 30 + ((i + 0.5) * (H - 60)) / items.length]]));
+    const pos = { L: col(left, 70), S: col(spines, W / 2), R: col(right, W - 70) };
+    const at = (x) => (x.dir === "up" ? [pos.L[x.from], pos.S[x.to]] : [pos.S[x.from], pos.R[x.to]]);
+    const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, class: "fabric", role: "group", "aria-label": "Leaf-spine fabric: senders left, spines middle, receivers right" });
+    const gLinks = el("g", { class: "fabric-links" }, svg);
+    const gPaths = el("g", { class: "fabric-paths" }, svg);
+    const gDots = el("g", { class: "fabric-dots", "aria-hidden": "true" }, svg);
+    const gNodes = el("g", { class: "fabric-nodes" }, svg);
+    const linkEls = new Map();
+    for (const x of links) {
+      const [[x1, y1], [x2, y2]] = at(x);
+      const g = el("g", { class: "fabric-link" }, gLinks);
+      const line = el("line", { x1, y1, x2, y2, class: "fabric-line" }, g);
+      const hit = el("line", { x1, y1, x2, y2, class: "fabric-hit" }, g);
+      const label = el("text", { x: (x1 + x2) / 2, y: (y1 + y2) / 2 - 9, class: "fabric-label", "text-anchor": "middle" }, g);
+      const title = el("title", {}, hit);
+      const fire = () => { const r = hit.getBoundingClientRect(); onLink?.(x.phys, r.left + r.width / 2, r.top + r.height / 2); };
+      g.addEventListener("click", () => { if (g.classList.contains("is-editable")) fire(); });
+      g.addEventListener("keydown", (e) => { if ((e.key === "Enter" || e.key === " ") && g.classList.contains("is-editable")) { e.preventDefault(); fire(); } });
+      linkEls.set(x.link, { ...x, g, line, label, title, x1, y1, x2, y2, len: Math.hypot(x2 - x1, y2 - y1) });
     }
-    const name = `${p.l}–${p.s}`;
-    const desc = failed ? `${name}: failed` : result ? `${name}: ${fmt(load)} of ${p.cap} Gbps (${Math.round(util * 100)}%)` : `${name}: ${p.cap} Gbps`;
-    if (editable) {
-      g.setAttribute("role", "button");
-      g.setAttribute("tabindex", "0");
-      g.setAttribute("aria-label", `${desc}. Change its capacity`);
-      const fire = () => onLink?.(p.key);
-      g.addEventListener("click", fire);
-      g.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fire(); } });
-    } else {
-      g.setAttribute("role", "img");
-      g.setAttribute("aria-label", desc);
+    const node = (name, [x, y], kind, side) => {
+      const g = el("g", { class: `fabric-node is-${kind}`, "data-name": name, "data-side": side ?? "" }, gNodes);
+      el("circle", { cx: x, cy: y, r: 17, class: "fabric-node-circle" }, g);
+      el("text", { x, y: y + 4, class: "fabric-node-label", "text-anchor": "middle" }, g).textContent = name;
+      return g;
+    };
+    const nodes = { L: {}, S: {}, R: {} };
+    for (const s of spines) nodes.S[s] = node(s, pos.S[s], "spine");
+    for (const l of left) {
+      const g = (nodes.L[l] = node(l, pos.L[l], "leaf", "left"));
+      g.addEventListener("click", () => onSelectSource?.(l));
+      g.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelectSource?.(l); } });
     }
-    el("title", {}, hit).textContent = desc;
+    for (const r of right) nodes.R[r] = node(r, pos.R[r], "leaf", "right");
+    for (const [x, text] of [[70, "senders"], [W / 2, "spines"], [W - 70, "receivers"]]) {
+      el("text", { x, y: H - 6, class: "fabric-col", "text-anchor": "middle" }, svg).textContent = text;
+    }
+    host.replaceChildren(svg);
+    built = { key, svg, links: linkEls, pos, gPaths, gDots, nodes, dense: links.length > 16 };
+    return built;
   }
 
-  // the selected demand's paths
-  if (demand) {
-    const pg = el("g", { class: "fabric-paths" }, svg);
-    const [sx, sy] = lf[demand.src];
-    const [dx, dy] = lf[demand.dst];
-    const total = Object.values(splitRates).reduce((a, x) => a + x, 0);
-    demandPaths.forEach((s, i) => {
-      const [px, py] = sp[s];
-      const off = (i - (demandPaths.length - 1) / 2) * 5;
-      el("polyline", { points: `${sx + off},${sy - 12} ${px + off},${py + 12} ${dx + off},${dy - 12}`, class: "fabric-path" }, pg);
-      if (result && splitRates[s] != null) {
-        const share = total > 0 ? Math.round((splitRates[s] / total) * 100) : 0;
-        const t = el("text", { x: px, y: py - 18, class: "fabric-share", "text-anchor": "middle" }, pg);
-        t.textContent = `${fmt(splitRates[s])}G · ${share}%`;
+  /**
+   * opts: { net, baseNet, demands, selected, result (null hides the numbers), editable,
+   *         selectedLink, motion (dots on), canSwitch (several demands to show) }
+   */
+  function update({ net, baseNet, demands, selected, result, editable, selectedLink, motion, canSwitch }) {
+    const b = build(net, baseNet, demands);
+    const d = demands[selected] ?? null;
+    const onDemand = (x) => d && ((x.dir === "up" && x.from === d.src) || (x.dir === "down" && x.to === d.dst));
+    for (const x of b.links.values()) {
+      const cap = net.cap[x.link] ?? 0;
+      const load = result?.linkLoad[x.link] ?? 0;
+      const util = cap > 0 ? load / cap : 0;
+      const failed = cap === 0;
+      const full = !!result && !failed && util >= 0.99;
+      x.line.style.strokeWidth = String(failed ? 1.5 : result ? 2.5 + (load / 80) * 11 : 3);
+      x.g.classList.toggle("is-failed", failed);
+      x.g.classList.toggle("is-full", full);
+      x.g.classList.toggle("is-selected", selectedLink === x.phys);
+      x.g.classList.toggle("is-editable", !!editable);
+      const showLabel = !b.dense || onDemand(x) || selectedLink === x.phys;
+      x.label.textContent = !showLabel ? "" : failed ? "failed" : result ? `${fmt(load)} / ${cap}${full ? " full" : ""}` : `${cap}G`;
+      const desc = `${x.from}→${x.to}: ${failed ? "failed" : result ? `${fmt(load)} of ${cap} Gbps${full ? ", full" : ""}` : `${cap} Gbps`}`;
+      x.title.textContent = editable ? `${desc}. Click to change the capacity of ${x.phys.replace("-", "–")}` : desc;
+      if (editable) { x.g.setAttribute("role", "button"); x.g.setAttribute("tabindex", "0"); x.g.setAttribute("aria-label", `${desc}. Change its capacity`); }
+      else { x.g.setAttribute("role", "img"); x.g.removeAttribute("tabindex"); x.g.setAttribute("aria-label", desc); }
+    }
+    for (const [n, g] of Object.entries(b.nodes.L)) {
+      g.classList.toggle("is-src", !!d && n === d.src);
+      if (canSwitch) { g.setAttribute("role", "button"); g.setAttribute("tabindex", "0"); g.setAttribute("aria-label", `${n}: show its traffic`); g.classList.add("is-clickable"); }
+      else { g.removeAttribute("role"); g.removeAttribute("tabindex"); g.classList.remove("is-clickable"); }
+    }
+    for (const [n, g] of Object.entries(b.nodes.R)) g.classList.toggle("is-dst", !!d && n === d.dst);
+    // the selected demand's paths, with their shares
+    b.gPaths.replaceChildren();
+    if (d && b.pos.L[d.src] && b.pos.R[d.dst]) {
+      const rates = result?.perDemand[selected]?.rates ?? {};
+      const total = Object.values(rates).reduce((a, x) => a + x, 0);
+      const ok = net.spines.filter((s) => (net.cap[`${d.src}>${s}`] ?? 0) > 0 && (net.cap[`${s}>${d.dst}`] ?? 0) > 0);
+      for (const s of ok) {
+        const [sx, sy] = b.pos.L[d.src];
+        const [mx, my] = b.pos.S[s];
+        const [dx, dy] = b.pos.R[d.dst];
+        el("polyline", { points: `${sx + 19},${sy} ${mx},${my} ${dx - 19},${dy}`, class: "fabric-path" }, b.gPaths);
+        if (result) {
+          const share = total > 0 ? Math.round(((rates[s] ?? 0) / total) * 100) : 0;
+          el("text", { x: mx, y: my - 25, class: "fabric-share", "text-anchor": "middle" }, b.gPaths).textContent = `${fmt(rates[s] ?? 0)}G · ${share}%`;
+        }
       }
-    });
+    }
+    // moving dots: speed follows the throughput on the link
+    b.gDots.replaceChildren();
+    if (result && motion) {
+      for (const x of b.links.values()) {
+        const load = result.linkLoad[x.link] ?? 0;
+        if (!(load > 0.5)) continue;
+        const dur = Math.min(8, Math.max(0.6, x.len / (2.2 * load)));
+        for (const phase of [0, 0.5]) {
+          const c = el("circle", { r: 2.6, class: "fabric-flow" }, b.gDots);
+          el("animateMotion", { dur: `${dur.toFixed(2)}s`, repeatCount: "indefinite", begin: `-${(dur * phase).toFixed(2)}s`, path: `M${x.x1},${x.y1} L${x.x2},${x.y2}` }, c);
+        }
+      }
+    }
   }
 
-  const nodes = el("g", { class: "fabric-nodes" }, svg);
-  for (const [s, [x, y]] of Object.entries(sp)) {
-    el("circle", { cx: x, cy: y, r: 15, class: "fabric-spine" }, nodes);
-    el("text", { x, y: y + 4, class: "fabric-node-label", "text-anchor": "middle" }, nodes).textContent = s;
-  }
-  for (const [l, [x, y]] of Object.entries(lf)) {
-    const role = demand && l === demand.src ? " is-src" : demand && l === demand.dst ? " is-dst" : "";
-    el("circle", { cx: x, cy: y, r: 15, class: `fabric-leaf${role}` }, nodes);
-    el("text", { x, y: y + 4, class: "fabric-node-label", "text-anchor": "middle" }, nodes).textContent = l;
-  }
-  if (demand) {
-    const [sx, sy] = lf[demand.src];
-    const [dx] = lf[demand.dst];
-    el("text", { x: sx, y: sy + 34, class: "fabric-tag", "text-anchor": "middle" }, nodes).textContent = "source";
-    el("text", { x: dx, y: sy + 34, class: "fabric-tag", "text-anchor": "middle" }, nodes).textContent = "destination";
-  }
-  host.replaceChildren(svg);
-  return svg;
+  return { update };
 }

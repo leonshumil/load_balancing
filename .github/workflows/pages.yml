@@ -3,7 +3,7 @@ name: Deploy site to Pages
 on:
   push:
     branches: [main, dev]
-    paths: ["site/public/**", ".github/workflows/pages.yml"]
+    paths: ["site/public/**", ".github/workflows/pages.yml", "tools/stamp-build.sh"]
   workflow_dispatch:
 
 permissions:
@@ -43,6 +43,17 @@ jobs:
             printf '<!doctype html><meta charset="utf-8"><title>Not live yet</title><p>Not live yet. See <a href="preview/">the preview</a>.</p>\n' > _site/index.html
           fi
           cp -r dev-src/site/public/. _site/preview/
+      - name: Stamp builds (footer + cache-busting ?v=<commit>)
+        run: |
+          stamp=dev-src/tools/stamp-build.sh
+          dev=$(git -C dev-src rev-parse --short HEAD)
+          bash "$stamp" _site/preview "dev · $dev" "$dev"
+          if [ -d main-src/site/public ]; then
+            main=$(git -C main-src rev-parse --short HEAD)
+            tmp=$(mktemp -d); mv _site/preview "$tmp/preview"
+            bash "$stamp" _site "main · $main" "$main"
+            mv "$tmp/preview" _site/preview
+          fi
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

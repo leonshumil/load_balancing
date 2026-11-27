@@ -17,6 +17,10 @@ export function cleanRead(raw, ids) {
   return [...new Set(raw.filter((id) => typeof id === "string" && ids.includes(id)))].sort();
 }
 
+/** Watch counts as done once 90% of the video has played (a fixed duration is needed). */
+export const watchedEnough = (currentTime, duration) =>
+  Number.isFinite(duration) && duration > 0 && currentTime / duration >= 0.9;
+
 /**
  * How to tell that the video was watched to the end:
  *  "ended"   an HTML <video>: its own ended event;

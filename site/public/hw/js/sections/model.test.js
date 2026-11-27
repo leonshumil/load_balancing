@@ -1,7 +1,7 @@
 // Read and Watch completion (bug fixes before step 05).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { toggleRead, readDone, cleanRead, watchMode } from "./model.js";
+import { toggleRead, readDone, cleanRead, watchMode, watchedEnough } from "./model.js";
 
 const IDS = ["passage-1", "passage-2", "passage-3", "passage-4", "passage-5"];
 
@@ -31,4 +31,14 @@ test("watchMode: how the end of the video is detected, by source", () => {
   assert.equal(watchMode({ tag: "IFRAME", src: "https://drive.google.com/file/d/xyz/preview" }), "button");
   assert.equal(watchMode({ tag: "IFRAME", src: "https://player.example.com/v/1" }), "button");
   assert.equal(watchMode(null), "button");
+});
+
+test("watchedEnough: Watch is done at 90% of the duration (or on ended)", () => {
+  assert.equal(watchedEnough(0, 223), false);
+  assert.equal(watchedEnough(200, 223), false); // 89.7%
+  assert.equal(watchedEnough(200.8, 223), true); // 90.04%
+  assert.equal(watchedEnough(223, 223), true);
+  assert.equal(watchedEnough(10, NaN), false); // metadata not loaded yet
+  assert.equal(watchedEnough(10, Infinity), false); // live stream: never by time
+  assert.equal(watchedEnough(10, 0), false);
 });
