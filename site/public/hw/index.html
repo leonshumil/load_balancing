@@ -10,9 +10,9 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=STIX+Two+Text:wght@400;700&display=swap">
   <link rel="stylesheet" href="../shared/tokens.css">
-  <link rel="stylesheet" href="../shared/base.css">
+  <link rel="stylesheet" href="../shared/base.css?v=2">
   <link rel="stylesheet" href="../shared/ui.css">
-  <link rel="stylesheet" href="hw.css?v=4">
+  <link rel="stylesheet" href="hw.css?v=5">
   <script src="passage-zoom.js?v=2" defer></script>
   <script type="module">
     import { initPage } from "./main.js";
@@ -89,7 +89,8 @@
 
     <!-- ===================== right column: progress ===================== -->
     <aside class="side" aria-label="Your progress">
-      <div class="panel progress-panel">
+      <div class="panel progress-panel" id="progress-panel">
+        <button class="side-toggle" type="button" aria-expanded="false" aria-controls="progress-panel" aria-label="Show your progress" title="Show your progress">‹</button>
         <h2>Your progress</h2>
         <ol class="progress-rows">
           <li class="progress-row" data-progress-for="read"><a href="#read"><span class="n">1</span><span>Read</span><span class="badge badge-gold">12 min</span><span class="tick"><svg><use href="#i-check"/></svg></span></a></li>

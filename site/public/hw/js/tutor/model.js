@@ -75,8 +75,11 @@ export function addStudent(state, text) {
 
 /**
  * The tutor's reply to the last student message. Saves the pick (this fork's branches only)
- * and the properties; counts the turn. reveal = the tutor revealed (ready_to_reveal) or this
- * was the MAX_TURNS-th turn on the fork.
+ * and the properties; counts the turn. Code decides the reveal (by):
+ *  "tutor"    the tutor revealed (ready_to_reveal);
+ *  "complete" the student has a pick and has named all of the fork's key properties;
+ *  "nudged"   the student has a pick, and had one more turn after picking (the one nudge);
+ *  "turns"    MAX_TURNS turns on this fork.
  */
 export function applyReply(state, r) {
   const s = clone(state);
@@ -85,11 +88,19 @@ export function applyReply(state, r) {
   if (!id) return { state: s, reveal: false };
   const f = s.forks[id];
   const options = forkById(id).options.map((o) => o.id);
+  const hadPick = f.pick !== null;
   if (options.includes(r.detected_pick)) f.pick = r.detected_pick;
   const props = (r.properties_mentioned ?? []).filter((p) => PROP_IDS.includes(p));
   f.properties = [...new Set([...f.properties, ...props])].sort();
   f.turns += 1;
-  return { state: s, reveal: r.ready_to_reveal === true || f.turns >= MAX_TURNS };
+  f.turnsSincePick = f.pick ? (hadPick ? (f.turnsSincePick ?? 0) + 1 : 0) : 0;
+  const missing = forkById(id).properties.filter((p) => !f.properties.includes(p));
+  let by = null;
+  if (r.ready_to_reveal === true) by = "tutor";
+  else if (f.pick && missing.length === 0) by = "complete";
+  else if (f.pick && f.turnsSincePick >= 1) by = "nudged";
+  else if (f.turns >= MAX_TURNS) by = "turns";
+  return { state: s, reveal: by !== null, by };
 }
 
 /**
@@ -111,6 +122,7 @@ export function revealCurrent(state, by) {
   s.forks[id].revealed = true;
   s.forks[id].revealedBy = by;
   if (by !== "tutor") say(s, { role: "tutor", text: revealText(id), fork: id, kind: "reveal" });
+  else if (forkById(id).interpretation) say(s, { role: "tutor", text: forkById(id).interpretation, fork: id, kind: "note" });
   return s;
 }
 

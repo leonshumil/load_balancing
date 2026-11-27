@@ -48,6 +48,25 @@ test("reveal rule: ready_to_reveal, or the 6th turn on a fork (code decides, not
   }
 });
 
+test("nudge once, then reveal: with a pick, all key properties named -> reveal; one key missing -> one more turn, then reveal", () => {
+  // F1 key: P1 + P5
+  const all = applyReply(addStudent(live(), "Distributed, P1 and P5"), reply({ detected_pick: "distributed", properties_mentioned: ["P1", "P5"] }));
+  assert.deepEqual([all.reveal, all.by], [true, "complete"]);
+  const first = applyReply(addStudent(live(), "Distributed, P1"), reply({ detected_pick: "distributed", properties_mentioned: ["P1"] }));
+  assert.equal(first.reveal, false); // the tutor's reply is the nudge
+  const second = applyReply(addStudent(first.state, "hmm"), reply());
+  assert.deepEqual([second.reveal, second.by], [true, "nudged"]); // still missing P5: reveal anyway after the one nudge
+  // no pick yet: keep talking
+  const noPick = applyReply(applyReply(addStudent(live(), "P1, P5"), reply({ properties_mentioned: ["P1", "P5"] })).state, reply());
+  assert.equal(noPick.reveal, false);
+});
+
+test("a rule reveal adds the scripted reveal (paper's pick, key properties, P4 note)", () => {
+  const s = revealCurrent(live(), "nudged");
+  assert.equal(s.forks.F1.revealedBy, "nudged");
+  assert.equal(s.messages.at(-1).kind, "reveal");
+});
+
 test("revealCurrent: by the tutor adds nothing; otherwise a scripted reveal from model.js with Figure 1's cost", () => {
   const byTutor = revealCurrent(live(), "tutor");
   assert.equal(byTutor.forks.F1.revealed, true);
@@ -58,6 +77,14 @@ test("revealCurrent: by the tutor adds nothing; otherwise a scripted reveal from
   assert.equal(msg.kind, "reveal");
   assert.match(msg.text, /Distributed/);
   assert.match(msg.text, /slow to react for DCs/); // CONGA Fig 1: Centralized's note
+});
+
+test("a reveal by the tutor itself still gets the P4 note from code (F2, F4), and nothing extra elsewhere", () => {
+  let s = advance(revealCurrent(live(), "tutor")); // F1: no note
+  assert.equal(s.messages.filter((m) => m.kind === "note").length, 0);
+  s = revealCurrent(s, "tutor"); // F2
+  assert.equal(s.messages.at(-1).kind, "note");
+  assert.match(s.messages.at(-1).text, /^P4 here is our reading: §2\.1 defines P4/);
 });
 
 test("revealText: all of the fork's key properties, and the P4 interpretation note where it applies", () => {

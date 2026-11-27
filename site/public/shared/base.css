@@ -74,6 +74,39 @@ h3 { font-size: 1.1rem; }
 
 .side > * { position: sticky; top: 24px; }
 
+/* Wide mode (≥1280px, while a wide section such as #tutor is in view; set by JS):
+   the main column grows to ~1400px and the progress column folds into a thin strip of
+   section numbers, which expands over the page on hover, focus or its toggle. */
+.app { transition: grid-template-columns 0.35s ease, max-width 0.35s ease; }
+.side-toggle { display: none; }
+@media (min-width: 1280px) {
+  .app.is-wide {
+    --side-w: 44px;
+    --main-max: 1400px;
+  }
+  .app.is-wide .side { position: relative; z-index: 30; }
+  .app.is-wide .side .progress-panel { transition: width 0.25s ease, margin-left 0.25s ease, padding 0.25s ease; }
+  .app.is-wide .side-toggle {
+    display: grid; place-items: center; width: 30px; height: 30px; margin: 0 0 8px auto;
+    border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--panel-raised);
+    color: var(--muted); font: 600 1rem/1 var(--font); cursor: pointer;
+  }
+  /* folded: a 44px strip of section numbers (green when done) and the count */
+  .app.is-wide .side:not(:hover, :focus-within, .is-open) .progress-panel { width: 44px; padding: 8px 0; overflow: hidden; }
+  .app.is-wide .side:not(:hover, :focus-within, .is-open) .side-toggle { margin: 0 auto 8px; }
+  .app.is-wide .side:not(:hover, :focus-within, .is-open) :is(.progress-panel > h2, .progress-row a > span:not(.n), .progress-stats .stat:not(:first-child), .progress-stats .label) { display: none; }
+  .app.is-wide .side:not(:hover, :focus-within, .is-open) .progress-row a { grid-template-columns: 1fr; padding: 7px 0; margin: 0 6px; }
+  .app.is-wide .side:not(:hover, :focus-within, .is-open) .progress-row.is-done a { background: var(--ok); }
+  .app.is-wide .side:not(:hover, :focus-within, .is-open) .progress-row.is-done .n { color: var(--bg); }
+  .app.is-wide .side:not(:hover, :focus-within, .is-open) .progress-stats { display: block; text-align: center; margin-top: 8px; }
+  .app.is-wide .side:not(:hover, :focus-within, .is-open) .progress-stats .value { font-size: 0.78rem; }
+  /* expanded: the normal panel, drawn over the main column */
+  .app.is-wide .side:is(:hover, :focus-within, .is-open) .progress-panel { width: 300px; margin-left: -256px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app, .app.is-wide .side .progress-panel { transition: none; }
+}
+
 @media (max-width: 1199.98px) {
   .app {
     grid-template-columns: var(--rail-w) minmax(0, 1fr);

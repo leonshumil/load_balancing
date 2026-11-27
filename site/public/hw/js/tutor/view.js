@@ -257,7 +257,7 @@ export function initTutor({ root, badge, progress }) {
     if (r.ok) {
       const a = M.applyReply(state, r.data);
       let s = a.state;
-      if (a.reveal) s = M.revealCurrent(s, r.data.ready_to_reveal ? "tutor" : "turns");
+      if (a.reveal) s = M.revealCurrent(s, a.by);
       setState(s);
       if (a.reveal) scheduleAdvance();
       return;
