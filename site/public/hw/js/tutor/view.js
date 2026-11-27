@@ -47,6 +47,7 @@ export function initTutor({ root, badge, progress }) {
   let fb = { forkId: null, pick: null, props: new Set() }; // guided-mode selections, not saved until Check
   let advanceTimer = null;
   let shown = 0; // messages already in the log (we append, so screen readers hear only new ones)
+  let note = ""; // a one-line notice under the chat input (too fast, too long)
 
   const save = () => store.set(M.STORE_KEY, state);
   const setState = (s) => { state = s; save(); render(); };
@@ -77,6 +78,7 @@ export function initTutor({ root, badge, progress }) {
   // ---------- start ----------
   if (state.mode === null && !TUTOR_ENABLED) state = M.start(state, "fallback", "disabled");
   if (state.mode === "live" && !TUTOR_ENABLED) state = M.goOffline(state, "disabled");
+  if (state.mode === "live" && !code) state = M.goOffline(state, "no_code");
   save();
   render();
 
@@ -133,7 +135,6 @@ export function initTutor({ root, badge, progress }) {
   }
 
   function renderControls() {
-    clearTimeout(advanceTimer);
     if (state.mode === null) return controls.replaceChildren(gate());
     const cur = M.currentForkId(state);
     if (cur && state.forks[cur].revealed) return controls.replaceChildren(nextStep(cur));
@@ -241,10 +242,79 @@ export function initTutor({ root, badge, progress }) {
     return box;
   }
 
-  // ---------- live chat (next commit) ----------
-  function liveControls() {
-    return h("div", { class: "guided" }, h("p", { class: "tutor-note" }, "Live chat: coming in the next build."));
+  // ---------- live chat ----------
+  const REASON = { class_code: "class_code", quota: "quota", limit: "limit" };
+
+  function liveControls(cur) {
+    const input = h("textarea", { class: "input chat-input", rows: "2", maxlength: "600", placeholder: cur ? "Your branch and why (P1–P5)…" : "Ask about CONGA…", "aria-label": "Your message" });
+    const sendBtn = h("button", { class: "btn btn-primary", type: "submit", disabled: busy }, "Send");
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); form.requestSubmit(); }
+    });
+    const form = h("form", { class: "chat-form", onsubmit: (e) => { e.preventDefault(); const t = input.value.trim(); if (t && !busy) send(t, input); } }, input, sendBtn);
+    const quick = cur ? h("div", { class: "chips quick-replies", role: "group", "aria-label": "Quick replies" },
+      ...forkById(cur).options.map((o) => quickBtn(`I'd pick ${o.label}`, () => send(`I'd pick ${o.label}.`))),
+      quickBtn("Why?", () => send("Why?")),
+      quickBtn("Show the passage", () => showForkPassage(cur), true),
+      quickBtn("Show me", () => { setState(M.revealCurrent(state, "button")); scheduleAdvance(); })) : null;
+    return h("div", { class: "live" },
+      quick,
+      h("p", { class: "tutor-note" }, "Chats are saved for the class discussion."),
+      form,
+      h("p", { class: "tutor-note live-note", role: "status" }, note));
   }
+
+  function quickBtn(text, onclick, always = false) {
+    return h("button", { class: "chip quick", type: "button", disabled: busy && !always, onclick }, text);
+  }
+
+  async function send(text, input) {
+    if (busy) return;
+    const before = state;
+    busy = true;
+    note = "";
+    const body = M.requestBody(before, text, code); // history = the turns before this message
+    state = M.addStudent(before, text);
+    save();
+    renderLog();
+    renderControls();
+    const typing = h("li", { class: "chat-msg is-tutor is-typing" }, h("span", { class: "sr-only" }, "The tutor is typing"),
+      h("span", { class: "dot" }), h("span", { class: "dot" }), h("span", { class: "dot" }));
+    log.append(typing);
+    log.scrollTop = log.scrollHeight;
+    const r = await askTutor(url, body);
+    typing.remove();
+    busy = false;
+    if (r.ok) {
+      const a = M.applyReply(state, r.data);
+      let s = a.state;
+      if (a.reveal) s = M.revealCurrent(s, r.data.ready_to_reveal ? "tutor" : "turns");
+      setState(s);
+      if (a.reveal) scheduleAdvance();
+      return;
+    }
+    if (FALLBACK_KINDS.has(r.kind)) {
+      setState(M.goOffline(state, REASON[r.kind] ?? "error"));
+      return;
+    }
+    // too fast / too long / bad request: not processed, so take the message back
+    note = r.kind === "too_fast" ? "One message every few seconds, please: try again in a moment."
+      : r.kind === "too_long" ? "Please keep your message under 600 characters." : "That message couldn't be sent; try rephrasing.";
+    state = before;
+    shown = Infinity; // re-render the log without the message
+    setState(state);
+    const box = controls.querySelector(".chat-input");
+    if (box) { box.value = text; box.focus(); }
+  }
+
+  function scheduleAdvance() {
+    clearTimeout(advanceTimer);
+    advanceTimer = setTimeout(() => {
+      const cur = M.currentForkId(state);
+      if (cur && state.forks[cur].revealed && !busy) setState(M.advance(state));
+    }, reduceMotion() ? 600 : 2500);
+  }
+
   function onNode(id) {
     if (state.mode === "fallback") {
       const cur = M.currentForkId(state);
@@ -252,6 +322,11 @@ export function initTutor({ root, badge, progress }) {
       fb.pick = id;
       renderControls();
       renderTreePane();
+      return;
+    }
+    if (state.mode === "live" && !busy) {
+      const q = M.nodeQuestion(state, id);
+      if (q) send(q);
     }
   }
 

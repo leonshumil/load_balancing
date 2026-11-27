@@ -251,6 +251,20 @@
 textarea.input { resize: vertical; width: 100%; }
 .link-btn { background: none; border: 0; padding: 0; color: var(--violet-soft); font: inherit; text-decoration: underline; cursor: pointer; }
 
+/* ---- live chat ---- */
+.live { display: flex; flex-direction: column; gap: 8px; }
+.quick-replies { flex-wrap: wrap; }
+.chip.quick { min-width: 0; padding: 7px 12px; font-size: 0.82rem; flex-direction: row; }
+.chip.quick:disabled { opacity: 0.45; cursor: wait; }
+.chat-form { display: flex; gap: 8px; align-items: flex-end; }
+.chat-form .chat-input { flex: 1; min-height: 2.9rem; max-height: 9rem; }
+.live-note:empty { display: none; }
+.chat-msg.is-typing { display: inline-flex; gap: 5px; align-items: center; padding: 14px 16px; }
+.chat-msg.is-typing .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); animation: tutor-typing 1.2s infinite ease-in-out; }
+.chat-msg.is-typing .dot:nth-child(3) { animation-delay: 0.15s; }
+.chat-msg.is-typing .dot:nth-child(4) { animation-delay: 0.3s; }
+@keyframes tutor-typing { 0%, 60%, 100% { opacity: 0.3; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-3px); } }
+
 /* ---- recap ---- */
 .tutor-recap { margin-top: 20px; display: flex; flex-direction: column; gap: 10px; }
 .tutor-recap h3 { margin: 0; }
@@ -284,4 +298,5 @@ textarea.input { resize: vertical; width: 100%; }
 
 @media (prefers-reduced-motion: reduce) {
   .fig1-edge, .fig1-dot { transition: none; }
+  .chat-msg.is-typing .dot { animation: none; opacity: 0.7; }
 }
