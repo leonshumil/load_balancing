@@ -5,11 +5,15 @@
 
 import { FORKS, TREE, PROPERTIES, scoreFork, costsVisible } from "../path/model.js";
 
+const PROP_NAME = Object.fromEntries(PROPERTIES.map((p) => [p.id, p.name]));
+/** "P2 Transport independent and P4 Incrementally deployable" */
+export const keyPropertiesText = (forkId) =>
+  forkById(forkId).properties.map((p) => `${p} ${PROP_NAME[p]}`).join(" and ");
+
 export const MAX_TURNS = 6; // turns on one fork before the client reveals it
 export const HISTORY_TURNS = 6; // earlier turns sent with each message
 export const MAX_MESSAGES = 300; // kept in the store
 export const STORE_KEY = "hw:tutor";
-export const CODE_KEY = "hw:classCode";
 
 export const OPENING =
   "Unit 4 left a gap: a FlowBender sender learns about congestion only on its own path, " +
@@ -33,7 +37,7 @@ export function initialState(sessionId) {
     v: 1,
     sessionId,
     mode: null, // null until started, then "live" or "fallback"
-    offline: null, // why we are in fallback: disabled | no_code | class_code | quota | limit | error
+    offline: null, // why we are in fallback: disabled | quota | limit | error
     fork: 0, // index into FORKS; FORKS.length = done
     forks: Object.fromEntries(FORK_IDS.map((id) => [id, { pick: null, properties: [], turns: 0, revealed: false, revealedBy: null }])),
     messages: [], // { role: "tutor"|"student", text, fork, kind?, cites? }
@@ -71,8 +75,11 @@ export function addStudent(state, text) {
 
 /**
  * The tutor's reply to the last student message. Saves the pick (this fork's branches only)
- * and the properties; counts the turn. reveal = the tutor revealed (ready_to_reveal) or this
- * was the MAX_TURNS-th turn on the fork.
+ * and the properties; counts the turn. Code decides the reveal (by):
+ *  "tutor"    the tutor revealed (ready_to_reveal);
+ *  "complete" the student has a pick and has named all of the fork's key properties;
+ *  "nudged"   the student has a pick, and had one more turn after picking (the one nudge);
+ *  "turns"    MAX_TURNS turns on this fork.
  */
 export function applyReply(state, r) {
   const s = clone(state);
@@ -81,18 +88,30 @@ export function applyReply(state, r) {
   if (!id) return { state: s, reveal: false };
   const f = s.forks[id];
   const options = forkById(id).options.map((o) => o.id);
+  const hadPick = f.pick !== null;
   if (options.includes(r.detected_pick)) f.pick = r.detected_pick;
   const props = (r.properties_mentioned ?? []).filter((p) => PROP_IDS.includes(p));
   f.properties = [...new Set([...f.properties, ...props])].sort();
   f.turns += 1;
-  return { state: s, reveal: r.ready_to_reveal === true || f.turns >= MAX_TURNS };
+  f.turnsSincePick = f.pick ? (hadPick ? (f.turnsSincePick ?? 0) + 1 : 0) : 0;
+  const missing = forkById(id).properties.filter((p) => !f.properties.includes(p));
+  let by = null;
+  if (r.ready_to_reveal === true) by = "tutor";
+  else if (f.pick && missing.length === 0) by = "complete";
+  else if (f.pick && f.turnsSincePick >= 1) by = "nudged";
+  else if (f.turns >= MAX_TURNS) by = "turns";
+  return { state: s, reveal: by !== null, by };
 }
 
-/** The scripted reveal: the paper's pick and Figure 1's note on each rejected branch. */
+/**
+ * The scripted reveal: the paper's pick, Figure 1's note on each rejected branch, all of the
+ * fork's key properties, and the interpretation note where a link is our reading (P4).
+ */
 export function revealText(forkId) {
   const f = forkById(forkId);
   const costs = Object.entries(f.costs).map(([id, note]) => `${label(id)}: “${note}”`).join("; ");
-  return `The paper takes ${label(f.congaPick)}. Figure 1's note on the other branch${Object.keys(f.costs).length > 1 ? "es" : ""}: ${costs}.`;
+  return `The paper takes ${label(f.congaPick)}. Figure 1's note on the other branch${Object.keys(f.costs).length > 1 ? "es" : ""}: ${costs}. ` +
+    `The argument rests on ${keyPropertiesText(forkId)}.${f.interpretation ? ` ${f.interpretation}` : ""}`;
 }
 
 /** Mark the current fork revealed. by: tutor (its reply already revealed) | turns | button | fallback. */
@@ -103,6 +122,7 @@ export function revealCurrent(state, by) {
   s.forks[id].revealed = true;
   s.forks[id].revealedBy = by;
   if (by !== "tutor") say(s, { role: "tutor", text: revealText(id), fork: id, kind: "reveal" });
+  else if (forkById(id).interpretation) say(s, { role: "tutor", text: forkById(id).interpretation, fork: id, kind: "note" });
   return s;
 }
 
@@ -142,7 +162,7 @@ export function historyFor(state, n = HISTORY_TURNS) {
 }
 
 /** The body for one POST to the tutor function (the message itself not yet in the log). */
-export function requestBody(state, message, classCode) {
+export function requestBody(state, message) {
   const picks = {};
   const properties_used = {};
   for (const id of FORK_IDS) {
@@ -152,7 +172,6 @@ export function requestBody(state, message, classCode) {
   }
   return {
     session_id: state.sessionId,
-    class_code: classCode,
     fork_id: currentForkId(state),
     history: historyFor(state),
     message,
@@ -198,7 +217,11 @@ export function propertiesUsed(state) {
 export function recap(state) {
   const rows = FORKS.map((f) => {
     const fs = state.forks[f.id];
+    const sc = scoreFork(f.id, { pick: fs.pick, properties: fs.properties }).propertyOverlap;
     return {
+      hit: sc.hit,
+      missed: sc.missed,
+      extra: sc.extra,
       forkId: f.id,
       section: f.section,
       pick: fs.pick,
@@ -210,7 +233,9 @@ export function recap(state) {
       keyProperties: f.properties,
     };
   });
-  return { rows, disagreements: rows.filter((r) => !r.agree).map((r) => r.forkId), propertiesUsed: propertiesUsed(state) };
+  const missed = {};
+  for (const r of rows) for (const p of r.missed) (missed[p] ??= []).push(r.forkId);
+  return { rows, disagreements: rows.filter((r) => !r.agree).map((r) => r.forkId), propertiesUsed: propertiesUsed(state), missed };
 }
 
 /** What Submit (step 07) sends for this section: no chat text (the function logs that). */

@@ -4,13 +4,15 @@ import { FORKS, BRANCH_IDS } from "./forks.ts";
 // @ts-ignore plain JS module from the site
 import { FORKS as MODEL_FORKS, TREE } from "../../../site/public/hw/js/path/model.js";
 
-Deno.test("forks.ts matches hw/js/path/model.js (ids, questions, options, CONGA's pick)", () => {
+Deno.test("forks.ts matches hw/js/path/model.js (questions, options, CONGA's pick, key properties, evidence)", () => {
   // deno-lint-ignore no-explicit-any
   const fromModel = Object.fromEntries(MODEL_FORKS.map((f: any) => [f.id, {
     question: f.question, options: f.options, congaPick: f.congaPick, section: f.section,
+    properties: f.properties, interpretation: f.interpretation, evidence: f.evidence,
   }]));
   const fromFunction = Object.fromEntries(Object.entries(FORKS).map(([id, f]) => [id, {
     question: f.question, options: f.options, congaPick: f.congaPick, section: f.section,
+    properties: f.properties, interpretation: f.interpretation, evidence: f.evidence,
   }]));
   assertEquals(fromFunction, fromModel);
 });

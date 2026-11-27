@@ -3,8 +3,8 @@
 #
 #  1. Real calls to the primary model: F1-F5 (F1 and F2 twice, as two students, to see whether
 #     the shared prefix gets cached), a free question.
-#  2. Class code, passages and our limits: missing/wrong code, passage by id, too fast,
-#     too long, wrong origin, CORS preflight (no model calls).
+#  2. Passages and our limits: passage by id, too fast, too long, wrong origin, CORS
+#     preflight (no model calls).
 #  3. Forced 429s, with a local stub in place of Groq:
 #     a. primary 429 -> the real overflow model answers (twice: the second call skips the primary)
 #     b. primary and overflow both 429 -> {error: "quota"}, one call each, no retry.
@@ -14,11 +14,10 @@
 # SMOKE_PACE seconds apart (default 25) so the test itself stays under 8K tokens/minute.
 # Uses ~10 requests of the free quota. Needs deno, python3, curl.
 #
-# The class code comes from TUTOR_CLASS_CODE in your shell (local default: dev-code, as in
-# tools/tutor-dev.defaults). This script never opens any .env file.
+# This script never opens any .env file.
 #
 #   tools/tutor-smoke.sh                                   # local, http://localhost:8787
-#   TUTOR_CLASS_CODE=<code> TUTOR_URL=https://<ref>.supabase.co/functions/v1/tutor tools/tutor-smoke.sh   # deployed
+#   TUTOR_URL=https://<ref>.supabase.co/functions/v1/tutor tools/tutor-smoke.sh   # deployed
 #     (parts 1-2 against the deployed function, plus: localhost origin refused and no debug
 #      header, i.e. TUTOR_DEV is off; part 3 runs only locally)
 set -uo pipefail
@@ -26,7 +25,6 @@ cd "$(dirname "$0")/.."
 URL="${TUTOR_URL:-http://localhost:8787}"
 ORIGIN="${TUTOR_ORIGIN:-https://leonshumil.github.io}"
 PACE="${SMOKE_PACE:-25}"
-CODE="${TUTOR_CLASS_CODE:-dev-code}"
 PRIMARY="${TUTOR_MODEL:-openai/gpt-oss-120b}"
 OVERFLOW="${TUTOR_MODEL_FALLBACK:-openai/gpt-oss-20b}"
 RUN="smoke-$(date +%s)"
@@ -44,7 +42,7 @@ pace() { printf '  (waiting %ss for the per-minute token limit)\n' "$PACE"; slee
 # post <url> <session> <fork|null> <message>  -> STATUS, BODY, CALLS (X-Tutor-Calls header, local only)
 post() {
   local payload
-  payload=$(python3 -I -c 'import json,sys; f=sys.argv[2]; print(json.dumps({"session_id": sys.argv[1], "class_code": sys.argv[4], "fork_id": None if f == "null" else f, "history": [], "message": sys.argv[3], "state": {"picks": {}, "properties_used": {}}}))' "$2" "$3" "$4" "${CLASS_CODE_OVERRIDE-$CODE}")
+  payload=$(python3 -I -c 'import json,sys; f=sys.argv[2]; print(json.dumps({"session_id": sys.argv[1], "fork_id": None if f == "null" else f, "history": [], "message": sys.argv[3], "state": {"picks": {}, "properties_used": {}}}))' "$2" "$3" "$4")
   STATUS=$(curl -sS -m 90 -o "$TMP/body" -D "$TMP/head" -w '%{http_code}' -X POST "$1" -H "Content-Type: application/json" -H "Origin: $ORIGIN" --data-binary "$payload" 2>/dev/null) || STATUS=000
   BODY=$(cat "$TMP/body" 2>/dev/null)
   CALLS=$(grep -i '^x-tutor-calls:' "$TMP/head" 2>/dev/null | sed 's/^[^:]*: *//; s/\r$//')
@@ -125,7 +123,7 @@ http.server.HTTPServer(("127.0.0.1", int(sys.argv[1])), H).serve_forever()' "$1"
 
 start_tutor() { # start_tutor <port> <env...>: another local tutor instance
   local port="$1"; shift
-  env TUTOR_CLASS_CODE="$CODE" "$@" TUTOR_DEV=1 TUTOR_PORT="$port" TUTOR_CHUNKS_FILE=tools/.out/chunks.json \
+  env "$@" TUTOR_DEV=1 TUTOR_PORT="$port" TUTOR_CHUNKS_FILE=tools/.out/chunks.json \
     deno run --allow-net --allow-env --allow-read --env-file=supabase/functions/.env supabase/functions/tutor/index.ts >"$TMP/tutor-$port.log" 2>&1 &
   pids+=($!)
   for _ in $(seq 1 60); do curl -s -o /dev/null "http://127.0.0.1:$port" && return; sleep 0.5; done
@@ -150,13 +148,9 @@ real_turn "$URL" "F5" "$RUN-F5" F5 per-flowlet "Per flowlet: no TCP changes are 
 pace
 real_turn "$URL" "free question" "$RUN-free" null - "What is a flowlet, in one sentence?"
 
-echo "2. Class code, passages and our limits (no model calls)"
-CLASS_CODE_OVERRIDE="" post "$URL" "$RUN-nocode" F1 "Distributed (P1)."
-if [ "$STATUS" = "401" ] && grep -q '"class_code"' <<<"$BODY"; then pass "missing class code -> 401 class_code"; else fail "missing code: HTTP $STATUS $BODY"; fi
-CLASS_CODE_OVERRIDE="not-the-code" post "$URL" "$RUN-badcode" F1 "Distributed (P1)."
-if [ "$STATUS" = "401" ] && grep -q '"class_code"' <<<"$BODY"; then pass "wrong class code -> 401 class_code"; else fail "wrong code: HTTP $STATUS $BODY"; fi
+echo "2. Passages and our limits (no model calls)"
 STATUS=$(curl -sS -m 30 -o "$TMP/body" -w '%{http_code}' -X POST "$URL" -H "Content-Type: application/json" -H "Origin: $ORIGIN" \
-  --data-binary "$(python3 -I -c 'import json,sys; print(json.dumps({"action": "passage", "class_code": sys.argv[1], "id": "2.4-p2"}))' "$CODE")" 2>/dev/null) || STATUS=000
+  --data-binary '{"action": "passage", "id": "2.4-p2"}' 2>/dev/null) || STATUS=000
 if [ "$STATUS" = "200" ] && python3 -I -c 'import json,sys; o=json.load(open(sys.argv[1])); assert o["id"] == "2.4-p2" and "asymmetry" in o["text"]' "$TMP/body" 2>/dev/null; then
   pass "passage 2.4-p2 -> 200 with its text"; else fail "passage: HTTP $STATUS $(head -c 200 "$TMP/body")"; fi
 post "$URL" "$RUN-free" null "And a flow?"   # same session as the free question, right after it

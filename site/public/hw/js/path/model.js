@@ -43,7 +43,11 @@ export const TREE = Object.fromEntries(
 export const congaPath = () => [...CONGA_PATH];
 
 // One fork per level of the tree. `properties` is the answer key (§2.1 properties the
-// paper's argument relies on); `evidence` holds the quotes behind it.
+// paper's argument relies on; set by the user on 2026-11-27); `evidence` holds the quotes
+// behind it. Evidence marked `interpretation` is our reading, not the paper's words: §2.1
+// defines P4 as applying CONGA to a subset of the traffic and switches, while Figure 1 only
+// says "hard to deploy" / "deployable with an overlay". `interpretation` (per fork) is the
+// sentence the reveal shows about that.
 // passageId: the numbered passages of the Read section (hw/index.html, passage 1-5).
 const FORK_DATA = [
   {
@@ -59,10 +63,12 @@ const FORK_DATA = [
     id: "F2", at: "distributed", section: "§2.3", passageId: "passage-2",
     question: "Many devices share the decision. Should it live in the transport stack of the end-hosts, or in the switches of the fabric?",
     properties: ["P2", "P4"],
+    interpretation: "P4 here is our reading: §2.1 defines P4 as applying CONGA to only a subset of the traffic and of the switches, while Figure 1 says host-based is “Hard to deploy”.",
     evidence: [
-      { property: "P2", source: "CONGA §2.3", quote: "datacenter fabric load balancing is too specific to be implemented in the transport stack." },
+      { property: "P2", source: "CONGA §2.1", quote: "Importantly, it should not require any modifications to TCP." },
       { property: "P2", source: "CONGA §2.3", quote: "some datacenter applications such as high performance storage systems bypass the kernel altogether [39, 7] and hence cannot use MPTCP." },
-      { property: "P4", source: "CONGA §1", quote: "Host-based methods such as MPTCP are challenging to deploy because network operators often do not control the end-host stack (e.g., in a public cloud)" },
+      { property: "P4", source: "CONGA Fig 1", quote: "Hard to deploy", interpretation: true },
+      { property: "P4", source: "CONGA §1", quote: "Host-based methods such as MPTCP are challenging to deploy because network operators often do not control the end-host stack (e.g., in a public cloud)", interpretation: true },
     ],
   },
   {
@@ -76,32 +82,36 @@ const FORK_DATA = [
   {
     id: "F4", at: "global", section: "§2.5", passageId: "passage-4",
     question: "Switches need to know about congestion beyond their own links. Should every switch learn the state of every link, or should only the leaves at the two ends of a path exchange it?",
-    properties: ["P4", "P5"],
+    properties: ["P5", "P4"],
+    interpretation: "P4 here is our reading: §2.1 defines P4 as applying CONGA to only a subset of the traffic and of the switches, while Figure 1 says leaf to leaf is “deployable with an overlay”.",
     evidence: [
-      { property: "P4", source: "CONGA §1", quote: "it is deployable in datacenters today with standard overlay encapsulations (VXLAN [35] in our implementation)" },
+      { property: "P5", source: "CONGA Fig 1", quote: "Near-optimal for 2-tier" },
       { property: "P5", source: "CONGA §1", quote: "The leaf-to-leaf scheme is provably near-optimal in typical 2-tier Clos topologies (henceforth called Leaf-Spine), simple to analyze, and easy to deploy." },
+      { property: "P4", source: "CONGA Fig 1", quote: "deployable with an overlay", interpretation: true },
+      { property: "P4", source: "CONGA §1", quote: "it is deployable in datacenters today with standard overlay encapsulations (VXLAN [35] in our implementation)", interpretation: true },
     ],
   },
   {
     id: "F5", at: "leaf-to-leaf", section: "§2.6", passageId: "passage-5",
     question: "The source leaf knows how congested each path is. What should it move from one path to another: a whole flow, a burst of packets, or each packet on its own?",
-    properties: ["P2", "P3"],
+    properties: ["P2", "P1"],
     evidence: [
-      { property: "P2", source: "CONGA §1", quote: "to achieve a higher granularity of control and resilience to the flow size distribution while not requiring any modifications to TCP." },
-      { property: "P3", source: "CONGA §2.1", quote: "high bandwidth flows that are not well balanced." },
+      { property: "P2", source: "CONGA Fig 1", quote: "Optimal, needs reordering-resilient TCP" },
+      { property: "P2", source: "CONGA §1", quote: "while not requiring any modifications to TCP." },
+      { property: "P1", source: "CONGA §1", quote: "CONGA is constructed to work with flowlets [27] to achieve a higher granularity of control" },
     ],
   },
 ];
 
 /**
- * Forks in order. Each: { id, at, section, passageId, question, options: [{id, label}],
+ * Forks in order. Each: { id, at, section, passageId, question, options: [{id, label}], interpretation,
  * congaPick, costs: { rejectedOptionId: printed note }, properties, evidence }.
  */
 export const FORKS = FORK_DATA.map((f) => {
   const options = TREE[f.at].children.map((id) => ({ id, label: TREE[id].label }));
   const congaPick = options.find((o) => TREE[o.id].onCongaPath).id;
   const costs = Object.fromEntries(options.filter((o) => o.id !== congaPick).map((o) => [o.id, TREE[o.id].note]));
-  return { ...f, options, congaPick, costs };
+  return { interpretation: null, ...f, options, congaPick, costs };
 });
 
 const FORK_BY_ID = new Map(FORKS.map((f) => [f.id, f]));

@@ -168,7 +168,8 @@
 .tutor-mode-badge { background: var(--panel-raised); color: var(--muted); border: 1px solid var(--border); }
 
 .tutor-panes { display: grid; gap: 20px; margin-top: 8px; }
-@media (min-width: 760px) { .tutor-panes { grid-template-columns: minmax(0, 45fr) minmax(0, 55fr); align-items: start; } }
+@media (min-width: 760px) { .tutor-panes { grid-template-columns: minmax(0, 40fr) minmax(0, 60fr); align-items: start; } }
+@media (min-width: 1280px) { .app.is-wide .chat-log { max-height: 560px; } }
 
 /* ---- tree pane ---- */
 .tutor-tree { min-width: 0; }
@@ -186,6 +187,8 @@
 .fig1-mine { fill: none; stroke: var(--lavender); stroke-width: 2; }
 [data-theme="light"] .fig1-mine { stroke: var(--violet-soft); }
 .fig1-label { fill: var(--muted); font-size: 12px; font-weight: 600; }
+/* a halo in the tree's background colour, so lines passing behind a label don't cut through it */
+.fig1-label, .fig1-cost { paint-order: stroke; stroke: var(--panel-raised); stroke-width: 4px; stroke-linejoin: round; }
 .fig1-label-sub { font-size: 10px; font-weight: 400; }
 .fig1-node.is-current .fig1-label, .fig1-node.is-path .fig1-label { fill: var(--text); }
 .fig1-cost { fill: var(--gold); font-size: 9.5px; font-style: italic; }
@@ -228,6 +231,7 @@
 .chat-msg.is-question { border-left: 3px solid var(--violet); }
 .chat-msg.is-reveal { border-left: 3px solid var(--gold); }
 .chat-msg.is-opening { color: var(--muted); }
+.chat-msg.is-note { color: var(--muted); font-size: 0.85rem; border-left: 3px solid var(--gold); }
 .chat-cites { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; }
 .chat-cites .label { margin: 0; }
 .cite-badge { border: 0; cursor: pointer; font-family: var(--font); }
@@ -239,17 +243,12 @@
 .tutor-hint { border: 1px dashed var(--border); border-radius: var(--radius-sm); padding: 10px 12px; font-size: 0.88rem; color: var(--muted); display: flex; flex-direction: column; gap: 8px; }
 .tutor-hint p { margin: 0; }
 .tutor-note { margin: 0; color: var(--muted); font-size: 0.85rem; }
-.tutor-gate { display: flex; flex-direction: column; gap: 12px; }
-.tutor-gate p { margin: 0; }
-.inline-form { display: flex; flex-wrap: wrap; gap: 8px; }
-.inline-form .input { flex: 1 1 160px; }
 .input {
   font: 500 0.95rem/1.4 var(--font); color: var(--text); background: var(--panel-raised);
   border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.65rem 0.8rem; min-width: 0;
 }
 .input:focus { outline: 2px solid var(--violet-soft); outline-offset: 1px; }
 textarea.input { resize: vertical; width: 100%; }
-.link-btn { background: none; border: 0; padding: 0; color: var(--violet-soft); font: inherit; text-decoration: underline; cursor: pointer; }
 
 /* ---- live chat ---- */
 .live { display: flex; flex-direction: column; gap: 8px; }
@@ -278,6 +277,10 @@ textarea.input { resize: vertical; width: 100%; }
 [data-theme="light"] .recap-table tr.is-diff .recap-pick { color: var(--text); font-weight: 700; }
 .recap-paper { display: none; }
 @media (max-width: 759.98px) { .recap-paper { display: block; color: var(--muted); font-size: 0.78rem; margin-top: 2px; } }
+.recap-props .chip { min-width: 0; padding: 6px 12px; cursor: default; }
+.chip.is-missed { box-shadow: inset 0 0 0 1px var(--gold); }
+.recap-table td.recap-missed { color: var(--gold); }
+[data-theme="light"] .recap-table td.recap-missed { color: var(--text); font-weight: 700; }
 .mda-grid { display: grid; gap: 10px; }
 @media (min-width: 760px) { .mda-grid { grid-template-columns: repeat(3, 1fr); } }
 .mda { display: flex; flex-direction: column; gap: 4px; }
