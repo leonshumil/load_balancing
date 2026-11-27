@@ -7,8 +7,10 @@ import { SCENARIOS, buildNet, evaluate, schemes, congaDynamics, paths } from "./
 export const STORE_KEY = "hw:lab";
 export const SCHEMES = ["ecmp", "localOnly", "conga", "weighted"];
 export const SCHEME_LABEL = { ecmp: "ECMP", localOnly: "Local only", conga: "CONGA", weighted: "Weighted (WCMP)" };
-export const SCENARIO_IDS = ["fig2", "fig3a", "fig3b", "sandbox", "ecmpWins"];
-export const SCENARIO_LABEL = { fig2: "Fig 2", fig3a: "Fig 3a", fig3b: "Fig 3b", sandbox: "Sandbox", ecmpWins: "ECMP wins?" };
+export const SCENARIO_IDS = ["fig2", "fig3a", "fig3b", "ecmpWins", "whyNot", "sandbox"]; // whyNot: a text step, no graph
+export const SCENARIO_LABEL = { fig2: "Fig 2", fig3a: "Fig 3a", fig3b: "Fig 3b", ecmpWins: "ECMP wins?", whyNot: "Why not", sandbox: "Sandbox" };
+/** The demand each scenario shows first: the one that has a choice to make. */
+const DEFAULT_SELECTED = { fig3b: 1 };
 const MIN_ANSWER = { fig2Why: 10, fig3Why: 10, whyNot: 20 };
 
 /** Sandbox starting point: three leaves, two spines, all links 80G; two leaves send to L2. */
@@ -133,7 +135,7 @@ export function canEdit(s, scenario = s.scenario) {
 
 export const setScenario = (s, scenario) => {
   if (!SCENARIO_IDS.includes(scenario)) throw new Error(`unknown scenario ${scenario}`);
-  return { ...clone(s), scenario, selected: 0 };
+  return { ...clone(s), scenario, selected: DEFAULT_SELECTED[scenario] ?? 0 };
 };
 export const setScheme = (s, scheme) => ({ ...clone(s), scheme });
 export const setSelected = (s, i) => ({ ...clone(s), selected: i });
@@ -147,6 +149,12 @@ export function predict(s, key, field, value) {
 
 export function reveal(s, key, field) {
   const p = s.predictions[key] ?? {};
+  if (key === "fig2" && field === "all") {
+    if (!["ecmp", "localOnly", "conga"].every((k) => Number.isFinite(p[k]))) throw new Error("predict all three totals first");
+    const n = clone(s);
+    n.revealed.fig2 = { ecmp: true, localOnly: true, conga: true };
+    return n;
+  }
   if (key === "fig2" && !Number.isFinite(p[field])) throw new Error("predict this scheme's total first");
   if (key === "fig3b") {
     if (!s.fig3.committed) throw new Error("commit your 3a weights first");
@@ -257,4 +265,44 @@ export function restore(raw) {
   }
   if (![null, "fig17", "delay"].includes(raw.ecmpWinsView) || !Number.isInteger(raw.selected)) return fresh;
   return clone(raw);
+}
+
+// ---------- one line of "why" per scheme (CONGA §2.4 for Figures 2 and 3, §6.1 for Figure 17) ----------
+
+const WHY = {
+  fig2: {
+    ecmp: "ECMP splits 50/50 and ignores congestion: the lower path is capped at 40 by the S1→L1 link.",
+    localOnly: "TCP slows the lower path, so it looks idle and gets more traffic, until both carry 40.",
+    conga: "CONGA sees the full S1→L1 link and shifts traffic up until both paths are equally loaded: 66.6 / 33.3.",
+    weighted: "Static weights do exactly as well as the split you set; they never look at the load.",
+  },
+  fig3a: {
+    ecmp: "In (a) only L1 sends, so a 50/50 split fills both paths.",
+    localOnly: "Both of L1's uplinks carry the same, so local only stays at 50/50 too.",
+    conga: "Both paths are free, so CONGA also lands on 50/50.",
+    weighted: "Your static split for L1→L2. Find the best one, then lock it.",
+  },
+  fig3b: {
+    ecmp: "ECMP keeps sending half of L1's traffic into S0→L2, which L0 needs (L0 has no other path).",
+    localOnly: "TCP slows L1's traffic through S0, so that uplink looks idle and local only sends even more there.",
+    conga: "CONGA sees S0→L2 is full and moves all of L1's traffic to S1: both get 40.",
+    weighted: "Your (a) weights still send part of L1's traffic through S0, which L0 now fills.",
+  },
+};
+
+/** The one-line explanation shown under the big number. */
+export function whyLine(s, scenario, scheme) {
+  if (WHY[scenario]?.[scheme]) return WHY[scenario][scheme];
+  if (scenario === "ecmpWins") {
+    const delay = s.ecmpWinsView === "delay";
+    if (scheme === "conga") return delay
+      ? "With congestion data 3 rounds old, both leaves chase the same 'idle' spine and swing together (average shown)."
+      : "Stuck: every other path a leaf could take also crosses a full link, so no leaf can lower its own bottleneck.";
+    if (scheme === "ecmp") return delay ? "ECMP's fixed 50/50 never reacts, so it never swings." : "ECMP spreads each pair over all three shared spines.";
+    if (scheme === "localOnly") return "Local only equalizes each leaf's own uplinks, without seeing the full downlinks.";
+    return "Static weights: as good as the split you set.";
+  }
+  const r = results(s, scenario)[scheme]?.result;
+  const full = r ? r.bottlenecks.map((l) => l.replace(">", "→")) : [];
+  return full.length ? `Full: ${full.join(", ")}. Every scheme meets the same capacities; only the split differs.` : "No link is full: every scheme delivers the whole demand.";
 }

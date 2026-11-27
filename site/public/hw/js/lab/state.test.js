@@ -144,3 +144,35 @@ test("submission: predictions, answers, weights and sandbox edits (what Submit s
   assert.equal(sub.edits.sandbox.links["L0-S0"], 40);
   assert.equal(sub.done, false);
 });
+
+// ---------- step 14 (lab redesign) ----------
+import { whyLine, SCENARIO_IDS as IDS } from "./state.js";
+
+test("Fig 2: one 'Check my predictions' reveals all three, and only when all three are entered", () => {
+  let s = predict(predict(initialState(), "fig2", "ecmp", 90), "fig2", "localOnly", 85);
+  assert.throws(() => reveal(s, "fig2", "all"), /predict/);
+  s = reveal(predict(s, "fig2", "conga", 100), "fig2", "all");
+  assert.deepEqual([...visibleSchemes(s, "fig2")].sort(), ["conga", "ecmp", "localOnly", "weighted"]);
+  assert.equal(canEdit(s, "fig2"), true);
+});
+
+test("the stepper has a Why not view (no graph) and the Sandbox", () => {
+  assert.deepEqual(IDS, ["fig2", "fig3a", "fig3b", "ecmpWins", "whyNot", "sandbox"]);
+  const s = setScenario(initialState(), "whyNot");
+  assert.equal(s.scenario, "whyNot");
+  assert.equal(visibleSchemes(s, "whyNot").size, 0);
+});
+
+test("each scenario opens on its most telling demand (Fig 3b: L1->L2, the one with a choice)", () => {
+  assert.equal(setScenario(initialState(), "fig3b").selected, 1);
+  assert.equal(setScenario(initialState(), "fig2").selected, 0);
+});
+
+test("whyLine: one sentence per scheme, from the paper's argument (CONGA §2.4)", () => {
+  const s = initialState();
+  assert.match(whyLine(s, "fig2", "localOnly"), /TCP slows the lower path/);
+  assert.match(whyLine(s, "fig2", "conga"), /66\.6/);
+  assert.match(whyLine(setScenario(s, "fig3b"), "fig3b", "weighted"), /S0/);
+  for (const sc of ["fig2", "fig3a", "fig3b"]) for (const k of ["ecmp", "localOnly", "conga", "weighted"]) assert.ok(whyLine(s, sc, k).length > 20, `${sc} ${k}`);
+  assert.match(whyLine(setScenario(s, "sandbox"), "sandbox", "ecmp"), /full|No link/);
+});
