@@ -201,7 +201,8 @@ export function initTutor({ root, badge, progress }) {
       r.setAttribute("role", "status");
       r.append(h("div", {},
         h("p", {}, fs.pick ? `You chose ${label(fs.pick)}; the paper takes ${label(f.congaPick)}.` : `The paper takes ${label(f.congaPick)}.`),
-        h("p", {}, `Your properties: ${used}. The paper argues from ${f.properties.map((p) => `${p} ${propName[p]}`).join(" and ")}.`)));
+        h("p", {}, `Your properties: ${used}. The paper's argument rests on ${M.keyPropertiesText(forkId)}.`),
+        f.interpretation ? h("p", { class: "tutor-note" }, f.interpretation) : null));
       box.append(r);
     }
     box.append(h("div", { class: "btn-row" },
@@ -308,7 +309,16 @@ export function initTutor({ root, badge, progress }) {
         x.agree ? h("span", { class: "badge" }, "same") : h("span", { class: "badge badge-gold" }, "differs"),
         x.agree ? null : h("span", { class: "recap-paper" }, `paper: ${x.congaLabel}`)),
       h("td", { class: "col-paper" }, x.congaLabel),
-      h("td", {}, x.properties.join(", ") || "–")));
+      h("td", {}, [...x.hit.map((p) => `${p} ✓`), ...x.extra].join(", ") || "–"),
+      h("td", { class: "recap-missed" }, x.missed.join(", ") || "–")));
+    const missedText = Object.entries(r.missed).map(([p, forks]) => `${p} ${propName[p]} (${forks.join(", ")})`).join("; ");
+    const usedSet = new Set(r.propertiesUsed);
+    const propSummary = h("ul", { class: "chips recap-props", "aria-label": "Properties across your walk" },
+      ...PROPERTIES.map((p) => {
+        const state_ = usedSet.has(p.id) ? "used" : r.missed[p.id] ? "missed" : "unused";
+        return h("li", {}, h("span", { class: `chip prop-chip${state_ === "used" ? " is-selected" : ""}${state_ === "missed" ? " is-missed" : ""}`, title: `${p.name}: ${state_}` },
+          h("span", {}, p.id), h("span", { class: "chip-sub" }, state_ === "used" ? "used" : state_ === "missed" ? "missed" : "–")));
+      }));
     const field = (key, q, ph) => {
       const t = h("textarea", { class: "input", rows: "2", maxlength: "300", placeholder: ph, "aria-label": q });
       t.value = state.recap[key] ?? "";
@@ -318,11 +328,14 @@ export function initTutor({ root, badge, progress }) {
     recapHost.replaceChildren(h("div", { class: "tutor-recap panel-inset" },
       h("h3", {}, "Your walk against the paper"),
       h("div", { class: "table-scroll" }, h("table", { class: "recap-table" },
-        h("thead", {}, h("tr", {}, h("th", { scope: "col" }, "Fork"), h("th", { scope: "col" }, "You"), h("th", { scope: "col", class: "col-paper" }, "Paper"), h("th", { scope: "col" }, "Your properties"))),
+        h("thead", {}, h("tr", {}, h("th", { scope: "col" }, "Fork"), h("th", { scope: "col" }, "You"), h("th", { scope: "col", class: "col-paper" }, "Paper"), h("th", { scope: "col" }, "You used"), h("th", { scope: "col" }, "Paper's, missed"))),
         h("tbody", {}, rows))),
       h("p", {}, r.disagreements.length
         ? `You and the paper parted ways at ${r.disagreements.join(", ")}. We'll come back to those in class.`
         : "You took the paper's branch at every fork."),
+      h("p", { class: "label" }, "Properties across the walk: used vs missed"),
+      propSummary,
+      h("p", {}, missedText ? `The paper also relied on ${missedText}.` : "You named every property the paper relies on."),
       h("p", { class: "label" }, "CONGA in Unit 4's words: who measures, who decides, who acts?"),
       h("div", { class: "mda-grid" },
         field("measure", "Who measures, and what?", "e.g. which devices, measuring what"),

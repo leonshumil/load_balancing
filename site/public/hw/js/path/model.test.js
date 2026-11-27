@@ -136,7 +136,30 @@ test("evidence quotes are verbatim from the paper", { skip: !paper && "docs/pape
   const text = flat(paper);
   for (const f of FORKS) for (const e of f.evidence) {
     assert.ok(text.includes(flat(e.quote)), `${f.id} ${e.property}: "${e.quote.slice(0, 60)}…" not in conga.md`);
-    assert.match(e.source, /^CONGA §\d/, `${f.id} ${e.property} source`);
+    assert.match(e.source, /^CONGA (§\d|Fig 1)/, `${f.id} ${e.property} source`);
+  }
+});
+
+test("answer key (user, 2026-11-27): F1 P1+P5, F2 P2+P4, F3 P3, F4 P5+P4, F5 P2+P1", () => {
+  assert.deepEqual(Object.fromEntries(FORKS.map((f) => [f.id, f.properties])), {
+    F1: ["P1", "P5"], F2: ["P2", "P4"], F3: ["P3"], F4: ["P5", "P4"], F5: ["P2", "P1"],
+  });
+});
+
+test("CONGA Fig 1 as evidence: F2 'Hard to deploy' (P4), F4 'Near-optimal for 2-tier' (P5) and 'deployable with an overlay' (P4), F5 'needs reordering-resilient TCP' (P2)", () => {
+  const has = (fork, prop, text) => FORKS.find((f) => f.id === fork).evidence.some((e) => e.property === prop && e.source === "CONGA Fig 1" && e.quote.includes(text));
+  assert.ok(has("F2", "P4", "Hard to deploy"));
+  assert.ok(has("F4", "P5", "Near-optimal for 2-tier"));
+  assert.ok(has("F4", "P4", "deployable with an overlay"));
+  assert.ok(has("F5", "P2", "needs reordering-resilient TCP"));
+});
+
+test("P4 links are interpretation (§2.1 defines P4 as a subset of traffic/switches): flagged, with a note for the reveal", () => {
+  for (const f of FORKS) {
+    const p4 = f.evidence.filter((e) => e.property === "P4");
+    for (const e of p4) assert.equal(e.interpretation, true, `${f.id} P4 evidence flagged`);
+    if (f.properties.includes("P4")) assert.match(f.interpretation, /§2\.1.*subset/, f.id);
+    else assert.equal(f.interpretation, null, f.id);
   }
 });
 

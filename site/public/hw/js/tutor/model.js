@@ -5,6 +5,11 @@
 
 import { FORKS, TREE, PROPERTIES, scoreFork, costsVisible } from "../path/model.js";
 
+const PROP_NAME = Object.fromEntries(PROPERTIES.map((p) => [p.id, p.name]));
+/** "P2 Transport independent and P4 Incrementally deployable" */
+export const keyPropertiesText = (forkId) =>
+  forkById(forkId).properties.map((p) => `${p} ${PROP_NAME[p]}`).join(" and ");
+
 export const MAX_TURNS = 6; // turns on one fork before the client reveals it
 export const HISTORY_TURNS = 6; // earlier turns sent with each message
 export const MAX_MESSAGES = 300; // kept in the store
@@ -87,11 +92,15 @@ export function applyReply(state, r) {
   return { state: s, reveal: r.ready_to_reveal === true || f.turns >= MAX_TURNS };
 }
 
-/** The scripted reveal: the paper's pick and Figure 1's note on each rejected branch. */
+/**
+ * The scripted reveal: the paper's pick, Figure 1's note on each rejected branch, all of the
+ * fork's key properties, and the interpretation note where a link is our reading (P4).
+ */
 export function revealText(forkId) {
   const f = forkById(forkId);
   const costs = Object.entries(f.costs).map(([id, note]) => `${label(id)}: “${note}”`).join("; ");
-  return `The paper takes ${label(f.congaPick)}. Figure 1's note on the other branch${Object.keys(f.costs).length > 1 ? "es" : ""}: ${costs}.`;
+  return `The paper takes ${label(f.congaPick)}. Figure 1's note on the other branch${Object.keys(f.costs).length > 1 ? "es" : ""}: ${costs}. ` +
+    `The argument rests on ${keyPropertiesText(forkId)}.${f.interpretation ? ` ${f.interpretation}` : ""}`;
 }
 
 /** Mark the current fork revealed. by: tutor (its reply already revealed) | turns | button | fallback. */
@@ -196,7 +205,11 @@ export function propertiesUsed(state) {
 export function recap(state) {
   const rows = FORKS.map((f) => {
     const fs = state.forks[f.id];
+    const sc = scoreFork(f.id, { pick: fs.pick, properties: fs.properties }).propertyOverlap;
     return {
+      hit: sc.hit,
+      missed: sc.missed,
+      extra: sc.extra,
       forkId: f.id,
       section: f.section,
       pick: fs.pick,
@@ -208,7 +221,9 @@ export function recap(state) {
       keyProperties: f.properties,
     };
   });
-  return { rows, disagreements: rows.filter((r) => !r.agree).map((r) => r.forkId), propertiesUsed: propertiesUsed(state) };
+  const missed = {};
+  for (const r of rows) for (const p of r.missed) (missed[p] ??= []).push(r.forkId);
+  return { rows, disagreements: rows.filter((r) => !r.agree).map((r) => r.forkId), propertiesUsed: propertiesUsed(state), missed };
 }
 
 /** What Submit (step 07) sends for this section: no chat text (the function logs that). */

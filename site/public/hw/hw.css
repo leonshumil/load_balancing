@@ -273,6 +273,10 @@ textarea.input { resize: vertical; width: 100%; }
 [data-theme="light"] .recap-table tr.is-diff .recap-pick { color: var(--text); font-weight: 700; }
 .recap-paper { display: none; }
 @media (max-width: 759.98px) { .recap-paper { display: block; color: var(--muted); font-size: 0.78rem; margin-top: 2px; } }
+.recap-props .chip { min-width: 0; padding: 6px 12px; cursor: default; }
+.chip.is-missed { box-shadow: inset 0 0 0 1px var(--gold); }
+.recap-table td.recap-missed { color: var(--gold); }
+[data-theme="light"] .recap-table td.recap-missed { color: var(--text); font-weight: 700; }
 .mda-grid { display: grid; gap: 10px; }
 @media (min-width: 760px) { .mda-grid { grid-template-columns: repeat(3, 1fr); } }
 .mda { display: flex; flex-direction: column; gap: 4px; }

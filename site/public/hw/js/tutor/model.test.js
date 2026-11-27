@@ -60,6 +60,17 @@ test("revealCurrent: by the tutor adds nothing; otherwise a scripted reveal from
   assert.match(msg.text, /slow to react for DCs/); // CONGA Fig 1: Centralized's note
 });
 
+test("revealText: all of the fork's key properties, and the P4 interpretation note where it applies", () => {
+  let s = advance(revealCurrent(live(), "button")); // now at F2
+  const f2 = revealCurrent(s, "button").messages.at(-1).text;
+  assert.match(f2, /In-Network/);
+  assert.match(f2, /P2 Transport independent and P4 Incrementally deployable/);
+  assert.match(f2, /P4 here is our reading: §2\.1 defines P4/);
+  const f1 = revealCurrent(live(), "button").messages.at(-1).text;
+  assert.match(f1, /P1 Responsive and P5 Optimized for Leaf-Spine topology/);
+  assert.doesNotMatch(f1, /our reading/);
+});
+
 test("advance: next fork's question; after F5 the walk is done", () => {
   let s = live();
   for (const f of FORKS) {
@@ -159,6 +170,11 @@ test("recap: picks vs the paper's, disagreements, properties used", () => {
   assert.deepEqual(r.disagreements, ["F1", "F5"]);
   assert.equal(r.rows[0].congaLabel, "Distributed");
   assert.deepEqual(propertiesUsed(s), ["P1", "P2", "P3", "P4", "P5"]);
+  // used vs missed, per fork and across the walk (key: F1 P1+P5, F2 P2+P4, F3 P3, F4 P5+P4, F5 P2+P1)
+  assert.deepEqual(r.rows.map((x) => x.missed), [["P5"], ["P4"], [], [], ["P2"]]);
+  assert.deepEqual(r.rows[4].extra, []);
+  assert.deepEqual(r.missed, { P5: ["F1"], P4: ["F2"], P2: ["F5"] });
+  assert.deepEqual(r.propertiesUsed, ["P1", "P2", "P3", "P4", "P5"]);
 });
 
 test("restore: a saved walk comes back; junk gives a fresh state", () => {

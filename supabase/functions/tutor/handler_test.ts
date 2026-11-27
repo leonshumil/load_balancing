@@ -317,3 +317,13 @@ Deno.test("earlier turns go in as a transcript, never as assistant messages (the
   assertEquals(calls[0].messages.map((m) => m.role), ["system", "user"]);
   assertMatch(calls[0].messages[1].content, /<earlier_turns>\nStudent: Distributed \(P1\)\nTutor: Why P1\?\n<\/earlier_turns>/);
 });
+
+Deno.test("the fork block gives the tutor the key properties, their evidence and the P4 note (nudge hint)", async () => {
+  const { handler, calls } = setup([JSON.stringify({ ...good, detected_pick: "in-network" })]);
+  await handler(post(body({ fork_id: "F2", message: "In-network (P2)" })));
+  const ctx = calls[0].messages[0].content;
+  assertMatch(ctx, /key properties: P2 Transport independent, P4 Incrementally deployable/);
+  assertMatch(ctx, /P4 \(CONGA Fig 1, our reading\): "Hard to deploy"/);
+  assertMatch(ctx, /note: P4 here is our reading: §2\.1 defines P4/);
+  assertMatch(SYSTEM_PROMPT, /nudge once before you\s+reveal/);
+});
