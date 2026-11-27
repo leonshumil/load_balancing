@@ -146,3 +146,15 @@
   .reading .passage.passage-zoomed { padding: 30px 20px 14px; max-height: 84vh; }
   .reading .passage.passage-zoomed .passage-text { font-size: 1.05rem; }
 }
+
+/* ---------- summary video (section 2) ---------- */
+.watch-video {
+  display: block;
+  width: 100%;
+  max-width: 800px;
+  height: auto;
+  margin: 0 auto;
+  background: var(--bg);
+  border-radius: var(--radius-md);
+  box-shadow: 0 2px 4px var(--paper-shadow), 0 14px 30px var(--paper-shadow);
+}
