@@ -26,6 +26,7 @@ create table if not exists public.tutor_log (
   fallback      boolean not null default false,  -- true when the model's output failed validation twice
   model         text,
   input_tokens  int,
+  cached_tokens int,             -- prompt tokens the provider served from its cache
   output_tokens int,
   latency_ms    int,
   created_at    timestamptz not null default now()

@@ -107,6 +107,15 @@ Deno.test("bad input: 400 with a friendly reply, and it doesn't use up the rate 
   assertEquals((await handler(new Request("http://x", { method: "GET", headers: { Origin: ORIGIN } }))).status, 405);
 });
 
+Deno.test("reply language: a Hebrew message gets an explicit <reply_language>Hebrew</reply_language>", async () => {
+  const { handler, calls } = setup();
+  await handler(post(body({ message: "גלובלי, בגלל אסימטריה (P3)" })));
+  assertMatch(calls[0].messages.at(-1)!.content, /<reply_language>Hebrew/);
+  const en = setup();
+  await en.handler(post(body()));
+  assert(!en.calls[0].messages.at(-1)!.content.includes("<reply_language>"));
+});
+
 Deno.test("free question: fork_id null is accepted", async () => {
   const { handler, calls } = setup([JSON.stringify({ ...good, detected_pick: "global", ready_to_reveal: true })]);
   const res = await handler(post(body({ fork_id: null, message: "what is a flowlet?" })));
@@ -211,11 +220,78 @@ Deno.test("log failure: the student still gets the reply", async () => {
 });
 
 Deno.test("provider 429 (free quota): {error: 'quota'} at once, no retry, logged", async () => {
-  const { handler, calls, store } = setup([new QuotaError(30)]);
+  const { handler, calls, store } = setup([new QuotaError(30, "mock")]);
   const res = await handler(post(body()));
   assertEquals(res.status, 429);
   assertEquals(await res.json(), { error: "quota", reply: MESSAGES.quota });
   assertEquals(calls.length, 1);
   assertEquals(store.logs[0].fallback, true);
   assertEquals(store.logs[0].reply, MESSAGES.quota);
+});
+
+// ---- overflow model (primary 429 -> one try on the overflow model) ----
+function chain(primary: (string | Error)[], overflow: (string | Error)[], opts: { debug?: boolean; clock?: { t: number } } = {}) {
+  const seen: string[] = [];
+  const mk = (name: string, outs: (string | Error)[]): LLM => {
+    let i = 0;
+    return () => {
+      seen.push(name);
+      const o = outs[Math.min(i++, outs.length - 1)];
+      if (o instanceof Error) return Promise.reject(o);
+      return Promise.resolve({ text: o, stopReason: "stop", model: name, inputTokens: 1000, outputTokens: 50, cachedTokens: 512, limits: null });
+    };
+  };
+  const clock = opts.clock ?? { t: 5_000_000 };
+  const store = memoryStore({ chunks, now: () => clock.t });
+  const handler = createHandler({
+    llm: mk("primary", primary), overflow: mk("overflow", overflow), store,
+    allowedOrigins: [ORIGIN], allowLocalhost: false, debug: opts.debug ?? false, now: () => clock.t,
+  });
+  return { handler, seen, store, clock };
+}
+
+Deno.test("overflow: primary 429 -> the overflow model answers (200), logged with its model", async () => {
+  const { handler, seen, store } = chain([new QuotaError(20, "primary")], [JSON.stringify(good)]);
+  const res = await handler(post(body()));
+  assertEquals(res.status, 200);
+  assertEquals((await res.json()).fallback, false);
+  assertEquals(seen, ["primary", "overflow"]);
+  assertEquals(store.logs[0].model, "overflow");
+});
+
+Deno.test("overflow: both 429 -> {error: 'quota'} after exactly one call each", async () => {
+  const { handler, seen } = chain([new QuotaError(20, "primary")], [new QuotaError(20, "overflow")]);
+  const res = await handler(post(body()));
+  assertEquals(res.status, 429);
+  assertEquals((await res.json()).error, "quota");
+  assertEquals(seen, ["primary", "overflow"]);
+});
+
+Deno.test("overflow: invalid output from the primary is retried on the primary (not a quota case)", async () => {
+  const { handler, seen } = chain(["{bad", JSON.stringify(good)], [JSON.stringify(good)]);
+  assertEquals((await handler(post(body()))).status, 200);
+  assertEquals(seen, ["primary", "primary"]);
+});
+
+Deno.test("cooldown: after a primary 429, skip it until retry-after has passed (max 60 s)", async () => {
+  const clock = { t: 5_000_000 };
+  const { handler, seen } = chain([new QuotaError(20, "primary"), JSON.stringify(good)], [JSON.stringify(good)], { clock });
+  await handler(post(body()));
+  clock.t += 10_000;
+  await handler(post(body()));
+  assertEquals(seen, ["primary", "overflow", "overflow"]); // still cooling down: straight to overflow
+  clock.t += 11_000;
+  await handler(post(body()));
+  assertEquals(seen.at(-1), "primary");
+});
+
+Deno.test("debug header: per-call model and tokens only in debug (local) mode", async () => {
+  const on = chain([new QuotaError(20, "primary")], [JSON.stringify(good)], { debug: true });
+  const res = await on.handler(post(body()));
+  const calls = JSON.parse(res.headers.get("X-Tutor-Calls")!);
+  assertEquals(calls.map((c: { model: string; status: string }) => [c.model, c.status]), [["primary", "quota"], ["overflow", "ok"]]);
+  assertEquals(calls[1].prompt, 1000);
+  assertEquals(calls[1].cached, 512);
+  const off = chain([JSON.stringify(good)], [JSON.stringify(good)]);
+  assertEquals((await off.handler(post(body()))).headers.get("X-Tutor-Calls"), null);
 });

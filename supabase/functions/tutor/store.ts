@@ -18,6 +18,7 @@ export type LogRow = {
   fallback: boolean;
   model: string | null;
   input_tokens: number | null;
+  cached_tokens: number | null;
   output_tokens: number | null;
   latency_ms: number;
 };

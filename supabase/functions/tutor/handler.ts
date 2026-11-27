@@ -37,12 +37,21 @@ export const MESSAGES = {
 const CANARIES = SYSTEM_PROMPT.split("\n").slice(7).map((l) => l.trim().replace(/\s+/g, " ")).filter((l) => l.length >= 40);
 
 export type HandlerDeps = {
-  llm: LLM;
+  llm: LLM; // primary model
+  overflow?: LLM; // tried once when the primary says 429 (its own free quota)
   store: Store;
   allowedOrigins: string[];
   allowLocalhost: boolean;
   secrets?: string[]; // values that must never appear in a reply (API keys)
+  debug?: boolean; // local runs: add an X-Tutor-Calls header with per-call model and tokens
+  now?: () => number;
 };
+
+// Per-call record (debug header, console). No message text, no keys.
+type Call = { model: string; status: "ok" | "invalid" | "quota" | "error"; prompt?: number; cached?: number; completion?: number; ms: number; limits?: unknown };
+
+const MAX_COOLDOWN_S = 60;
+const DEFAULT_COOLDOWN_S = 20;
 
 type Input = { session_id: string; fork_id: string | null; history: Turn[]; message: string; state: State };
 
@@ -86,6 +95,10 @@ function parseInput(raw: unknown): Input {
 
 export function createHandler(deps: HandlerDeps) {
   const secrets = (deps.secrets ?? []).filter((s) => s && s.length >= 8);
+  const now = deps.now ?? Date.now;
+  // After a 429 from the primary, send turns straight to the overflow model until
+  // retry-after has passed (per isolate; saves a wasted call per turn).
+  let primaryCoolUntil = 0;
 
   const originAllowed = (origin: string | null) => {
     if (origin === null) return true; // not a browser (curl, the smoke script); rate limits still apply
@@ -152,34 +165,49 @@ export function createHandler(deps: HandlerDeps) {
     const messages = buildMessages({ forkId: input.fork_id, history: input.history, message: input.message, state: input.state, base: ctx.base, extra: ctx.extra });
     const citable = ctx.chunks.map((c) => c.id);
 
+    // Model chain: primary, then (only on a 429) the overflow model once. Invalid output or a
+    // provider error gets one retry on the same model; a 429 is never retried on the same model.
+    const chain = deps.overflow ? [deps.llm, deps.overflow] : [deps.llm];
+    let step = deps.overflow && now() < primaryCoolUntil ? 1 : 0;
     let out: TutorOutput | null = null;
     let model: string | null = null;
     let inTok = 0, outTok = 0;
     let quota = false;
-    for (let attempt = 0; attempt < 2 && !out && !quota; attempt++) {
+    let failures = 0;
+    const calls: Call[] = [];
+    while (!out && !quota && failures < 2) {
+      const t0 = now();
+      const label = step === 0 ? "primary" : "overflow";
       try {
-        const res = await deps.llm({ system: SYSTEM_PROMPT, messages, schema: OUTPUT_SCHEMA });
+        const res = await chain[step]({ system: SYSTEM_PROMPT, messages, schema: OUTPUT_SCHEMA });
         model = res.model;
         inTok += res.inputTokens;
         outTok += res.outputTokens;
         const parsed = parseOutput(res.text, { forkId: input.fork_id, citable });
-        if (!parsed.ok) {
-          console.warn(`tutor output rejected (attempt ${attempt + 1}, stop=${res.stopReason}): ${parsed.error}`);
-        } else if (leaks(parsed.value.reply)) {
-          console.warn(`tutor output rejected (attempt ${attempt + 1}): echoes the prompt or a secret`);
-        } else {
-          out = parsed.value;
+        const ok = parsed.ok && !leaks(parsed.value.reply);
+        calls.push({ model: res.model, status: ok ? "ok" : "invalid", prompt: res.inputTokens, cached: res.cachedTokens ?? 0, completion: res.outputTokens, ms: now() - t0, limits: res.limits ?? undefined });
+        if (ok) out = (parsed as { value: TutorOutput }).value;
+        else {
+          failures++;
+          console.warn(`tutor output rejected (${label}, stop=${res.stopReason}): ${parsed.ok ? "echoes the prompt or a secret" : parsed.error}`);
         }
       } catch (e) {
         if (e instanceof QuotaError) {
-          // Free quota hit: no retry (a retry would only burn more quota).
-          console.warn(`tutor quota hit (retry-after ${e.retryAfterSeconds ?? "?"} s)`);
-          quota = true;
+          calls.push({ model: e.model, status: "quota", ms: now() - t0 });
+          console.warn(`tutor quota hit on ${label} ${e.model} (retry-after ${e.retryAfterSeconds ?? "?"} s)`);
+          if (step === 0) primaryCoolUntil = now() + Math.min(e.retryAfterSeconds ?? DEFAULT_COOLDOWN_S, MAX_COOLDOWN_S) * 1000;
+          if (step + 1 < chain.length) step++;
+          else quota = true;
         } else {
+          failures++;
+          calls.push({ model: label, status: "error", ms: now() - t0 });
           // Log the error class and short message only (LLMError never holds the key).
-          console.error(`tutor LLM error (attempt ${attempt + 1}):`, e instanceof Error ? `${e.name} ${e.name === "LLMError" ? e.message : ""}` : typeof e);
+          console.error(`tutor LLM error (${label}):`, e instanceof Error ? `${e.name} ${e.name === "LLMError" ? e.message : ""}` : typeof e);
         }
       }
+    }
+    for (const c of calls) {
+      console.log(`tutor call ${c.model} ${c.status}` + (c.prompt !== undefined ? ` prompt=${c.prompt} cached=${c.cached} completion=${c.completion}` : "") + ` ${c.ms}ms`);
     }
     const fallback = out === null;
     const result: TutorOutput = out ?? { reply: quota ? MESSAGES.quota : MESSAGES.fallback, cites: [], detected_pick: null, properties_mentioned: [], ready_to_reveal: false };
@@ -197,6 +225,7 @@ export function createHandler(deps: HandlerDeps) {
         fallback,
         model,
         input_tokens: model ? inTok : null,
+        cached_tokens: model ? calls.reduce((a, c) => a + (c.cached ?? 0), 0) : null,
         output_tokens: model ? outTok : null,
         latency_ms: Date.now() - started,
       });
@@ -204,7 +233,10 @@ export function createHandler(deps: HandlerDeps) {
       console.error("tutor log error:", e instanceof Error ? e.message : e); // the student still gets the reply
     }
 
-    if (quota) return fail(429, "quota");
-    return json(200, { ...result, fallback });
+    const debugHeaders: Record<string, string> = deps.debug ? { "X-Tutor-Calls": JSON.stringify(calls) } : {};
+    if (quota) {
+      return new Response(JSON.stringify({ error: "quota", reply: MESSAGES.quota }), { status: 429, headers: { ...cors, ...debugHeaders, "Content-Type": "application/json" } });
+    }
+    return new Response(JSON.stringify({ ...result, fallback }), { status: 200, headers: { ...cors, ...debugHeaders, "Content-Type": "application/json" } });
   };
 }

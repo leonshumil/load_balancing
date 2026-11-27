@@ -54,6 +54,11 @@ export type Turn = { role: "user" | "assistant"; text: string };
 export type Message = { role: "system" | "user" | "assistant"; content: string };
 export type State = { picks: Record<string, string>; properties_used: Record<string, string[]> };
 
+/** The reply language when it isn't English (rule 8 made explicit: smaller models drift to English). */
+export function replyLanguage(message: string): string | null {
+  return /[\u0590-\u05FF]/.test(message) ? "Hebrew" : null;
+}
+
 /** Student text can't open or close our tags. */
 export const neutralize = (s: string) => s.replace(/</g, "‹").replace(/>/g, "›");
 
@@ -96,6 +101,7 @@ export function buildMessages(opts: { forkId: string | null; history: Turn[]; me
   const last = [
     stateBlock(opts.state),
     ...(opts.extra.length ? [paperBlock(opts.extra)] : []),
+    ...(replyLanguage(opts.message) ? [`<reply_language>${replyLanguage(opts.message)} (the student wrote in ${replyLanguage(opts.message)}; technical terms stay in English)</reply_language>`] : []),
     `<student_message>\n${neutralize(opts.message)}\n</student_message>`,
   ].join("\n\n");
   const turns: Turn[] = [...opts.history.map((t) => ({ role: t.role, text: neutralize(t.text) })), { role: "user", text: last }];

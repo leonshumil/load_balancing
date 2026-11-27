@@ -14,13 +14,18 @@ export type LLMResponse = {
   model: string;
   inputTokens: number;
   outputTokens: number;
+  cachedTokens?: number; // prompt tokens served from the provider's cache (Groq: don't count toward limits)
+  limits?: Limits | null; // the provider's rate-limit headers, when sent
 };
+
+/** Groq's x-ratelimit-* headers: TPM (tokens per minute) and RPD (requests per day). */
+export type Limits = { tpm: number | null; tpmLeft: number | null; rpd: number | null; rpdLeft: number | null };
 
 export type LLM = (req: LLMRequest) => Promise<LLMResponse>;
 
 /** The provider said 429 (free quota or rate limit hit). Not retried. */
 export class QuotaError extends Error {
-  constructor(public retryAfterSeconds: number | null) {
+  constructor(public retryAfterSeconds: number | null, public model: string) {
     super("quota");
     this.name = "QuotaError";
   }
@@ -74,7 +79,7 @@ export function openAICompatibleLLM(cfg: LLMConfig): LLM {
     if (res.status === 429) {
       await res.body?.cancel();
       const ra = Number(res.headers.get("retry-after"));
-      throw new QuotaError(Number.isFinite(ra) && ra > 0 ? ra : null);
+      throw new QuotaError(Number.isFinite(ra) && ra > 0 ? ra : null, cfg.model);
     }
     if (!res.ok) {
       // Keep only the provider's error code (e.g. json_validate_failed), not its message.
@@ -86,12 +91,24 @@ export function openAICompatibleLLM(cfg: LLMConfig): LLM {
     }
     const data = await res.json();
     const choice = data?.choices?.[0];
+    const num = (h: string) => {
+      const v = res.headers.get(h);
+      return v === null || v === "" || !Number.isFinite(Number(v)) ? null : Number(v);
+    };
+    const limits: Limits = {
+      tpm: num("x-ratelimit-limit-tokens"),
+      tpmLeft: num("x-ratelimit-remaining-tokens"),
+      rpd: num("x-ratelimit-limit-requests"),
+      rpdLeft: num("x-ratelimit-remaining-requests"),
+    };
     return {
       text: typeof choice?.message?.content === "string" ? choice.message.content : "",
       stopReason: choice?.finish_reason ?? null,
       model: data?.model ?? cfg.model,
       inputTokens: data?.usage?.prompt_tokens ?? 0,
       outputTokens: data?.usage?.completion_tokens ?? 0,
+      cachedTokens: data?.usage?.prompt_tokens_details?.cached_tokens ?? 0,
+      limits: Object.values(limits).some((v) => v !== null) ? limits : null,
     };
   };
 }

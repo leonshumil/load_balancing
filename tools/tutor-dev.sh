@@ -6,7 +6,8 @@
 #
 # Secrets come from supabase/functions/.env (gitignored), e.g.
 #   GROQ_API_KEY=gsk_...
-#   TUTOR_MODEL=<model id>                       (or export TUTOR_MODEL before running)
+#   optional: TUTOR_MODEL (default openai/gpt-oss-120b), TUTOR_REASONING_EFFORT (default low),
+#             TUTOR_MODEL_FALLBACK (default qwen/qwen3.8-27b, tried once on a 429)
 #   SUPABASE_URL=https://<ref>.supabase.co      (only for --db)
 #   TUTOR_DB_KEY=sb_secret_...                   (only for --db)
 set -euo pipefail
@@ -21,6 +22,11 @@ command -v deno >/dev/null || { echo "Deno not found. Install: curl -fsSL https:
 
 export TUTOR_DEV=1
 export TUTOR_PORT="${TUTOR_PORT:-8787}"
+# Model defaults, unless the env file (or the shell) sets them.
+default() { grep -q "^$1=" "$ENV_FILE" || export "$1=${!1:-$2}"; }
+default TUTOR_MODEL openai/gpt-oss-120b
+default TUTOR_REASONING_EFFORT low
+default TUTOR_MODEL_FALLBACK qwen/qwen3.8-27b
 if [ "${1:-}" != "--db" ]; then
   [ -f tools/.out/chunks.json ] || node tools/build-chunks.mjs
   export TUTOR_CHUNKS_FILE=tools/.out/chunks.json

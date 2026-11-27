@@ -30,7 +30,7 @@ Deno.test("request: chat/completions, bearer key, system first, strict json_sche
   assertEquals(body.response_format.json_schema.strict, true);
   assertEquals(body.response_format.json_schema.schema, OUTPUT_SCHEMA);
   assertEquals(body.reasoning_effort, "low");
-  assertEquals(r, { text: '{"a":1}', stopReason: "stop", model: "m-1", inputTokens: 50, outputTokens: 9 });
+  assertEquals(r, { text: '{"a":1}', stopReason: "stop", model: "m-1", inputTokens: 50, outputTokens: 9, cachedTokens: 0, limits: null });
 });
 
 Deno.test("request: json_object mode; no reasoning_effort unless configured", async () => {
@@ -62,4 +62,23 @@ Deno.test("missing content -> empty text (the handler then retries / falls back)
   const r = await openAICompatibleLLM({ ...cfg, fetch: f })(req);
   assertEquals(r.text, "");
   assertEquals(r.stopReason, "length");
+});
+
+Deno.test("usage: cached tokens and the rate-limit headers are reported", async () => {
+  const { f } = fakeFetch(() =>
+    new Response(
+      JSON.stringify({ model: "m", choices: [{ message: { content: "{}" }, finish_reason: "stop" }], usage: { prompt_tokens: 3000, completion_tokens: 200, prompt_tokens_details: { cached_tokens: 1792 } } }),
+      { headers: { "x-ratelimit-limit-tokens": "8000", "x-ratelimit-remaining-tokens": "4800", "x-ratelimit-limit-requests": "1000", "x-ratelimit-remaining-requests": "990" } },
+    )
+  );
+  const r = await openAICompatibleLLM({ ...cfg, fetch: f })(req);
+  assertEquals(r.cachedTokens, 1792);
+  assertEquals(r.limits, { tpm: 8000, tpmLeft: 4800, rpd: 1000, rpdLeft: 990 });
+});
+
+Deno.test("QuotaError names the model; reasoning_effort 'none' is sent as configured", async () => {
+  const { f, seen } = fakeFetch(() => new Response("{}", { status: 429 }));
+  const e = await assertRejects(() => openAICompatibleLLM({ ...cfg, model: "qwen/x", reasoningEffort: "none", fetch: f })(req), QuotaError);
+  assertEquals(e.model, "qwen/x");
+  assertEquals(JSON.parse(seen[0].init.body as string).reasoning_effort, "none");
 });
