@@ -1,7 +1,6 @@
-// The one place that talks to the model provider (swap this file to change providers).
-// Anthropic Messages API, structured JSON output. Model from TUTOR_MODEL (default
-// claude-haiku-5-5), key from the ANTHROPIC_API_KEY secret.
-import Anthropic from "npm:@anthropic-ai/sdk@1.14.0";
+// The one place that talks to the model provider. An OpenAI-compatible chat-completions
+// client (plain fetch, no SDK): switching provider is a config change (base URL, key, model).
+// Default provider: the Groq free tier.
 
 export type LLMRequest = {
   system: string;
@@ -19,28 +18,80 @@ export type LLMResponse = {
 
 export type LLM = (req: LLMRequest) => Promise<LLMResponse>;
 
-// Haiku 5.5 thinks by default and thinking counts toward max_tokens, so leave room above
-// the ~200 tokens a reply needs; effort "low" keeps thinking short (approved 2026-11-27).
-const MAX_TOKENS = 1024;
+/** The provider said 429 (free quota or rate limit hit). Not retried. */
+export class QuotaError extends Error {
+  constructor(public retryAfterSeconds: number | null) {
+    super("quota");
+    this.name = "QuotaError";
+  }
+}
 
-export function anthropicLLM(opts: { apiKey?: string; model?: string } = {}): LLM {
-  const client = new Anthropic({ apiKey: opts.apiKey ?? Deno.env.get("ANTHROPIC_API_KEY"), maxRetries: 1, timeout: 30_000 });
-  const model = opts.model ?? Deno.env.get("TUTOR_MODEL") ?? "claude-haiku-5-5";
+/** Any other provider failure. The message never includes the key or the request body. */
+export class LLMError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "LLMError";
+  }
+}
+
+export type LLMConfig = {
+  baseUrl: string; // e.g. https://api.groq.com/openai/v1
+  key: string;
+  model: string;
+  jsonMode: "json_schema" | "json_object"; // json_schema = strict structured output
+  maxTokens: number;
+  reasoningEffort?: string; // only for reasoning models that accept it
+  fetch?: typeof fetch;
+};
+
+export const GROQ_BASE_URL = "https://api.groq.com/openai/v1";
+
+export function openAICompatibleLLM(cfg: LLMConfig): LLM {
+  const f = cfg.fetch ?? fetch;
+  const url = `${cfg.baseUrl.replace(/\/$/, "")}/chat/completions`;
   return async ({ system, messages, schema }) => {
-    const res = await client.messages.create({
-      model,
-      max_tokens: MAX_TOKENS,
-      system,
-      messages,
-      output_config: { effort: "low", format: { type: "json_schema", schema } },
-    });
-    const text = res.content.flatMap((b) => (b.type === "text" ? [b.text] : [])).join("");
+    const body: Record<string, unknown> = {
+      model: cfg.model,
+      messages: [{ role: "system", content: system }, ...messages],
+      max_completion_tokens: cfg.maxTokens,
+      response_format: cfg.jsonMode === "json_schema"
+        ? { type: "json_schema", json_schema: { name: "tutor_reply", strict: true, schema } }
+        : { type: "json_object" },
+    };
+    if (cfg.reasoningEffort) body.reasoning_effort = cfg.reasoningEffort;
+
+    let res: Response;
+    try {
+      res = await f(url, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${cfg.key}`, "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(30_000),
+      });
+    } catch (e) {
+      throw new LLMError(`network: ${e instanceof Error ? e.name : "error"}`);
+    }
+    if (res.status === 429) {
+      await res.body?.cancel();
+      const ra = Number(res.headers.get("retry-after"));
+      throw new QuotaError(Number.isFinite(ra) && ra > 0 ? ra : null);
+    }
+    if (!res.ok) {
+      // Keep only the provider's error code (e.g. json_validate_failed), not its message.
+      let code = "";
+      try {
+        code = (await res.json())?.error?.code ?? "";
+      } catch { /* not JSON */ }
+      throw new LLMError(`HTTP ${res.status}${code ? ` ${code}` : ""}`);
+    }
+    const data = await res.json();
+    const choice = data?.choices?.[0];
     return {
-      text,
-      stopReason: res.stop_reason ?? null,
-      model: res.model,
-      inputTokens: res.usage.input_tokens,
-      outputTokens: res.usage.output_tokens,
+      text: typeof choice?.message?.content === "string" ? choice.message.content : "",
+      stopReason: choice?.finish_reason ?? null,
+      model: data?.model ?? cfg.model,
+      inputTokens: data?.usage?.prompt_tokens ?? 0,
+      outputTokens: data?.usage?.completion_tokens ?? 0,
     };
   };
 }

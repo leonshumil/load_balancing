@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Smoke test for the tutor function: valid JSON for F1-F5, plus the limits.
-# Calls the real model: about 7 messages (~$0.005).
+# Smoke test for the tutor function: valid JSON for F1-F5, the limits, and a forced
+# provider 429 -> {error: "quota"}. Uses 6 requests of the Groq free quota (F1-F5 + a free
+# question); the 429 test uses a local stub instead of Groq (needs deno on PATH).
 #
 #   tools/tutor-smoke.sh                                         # local (tools/tutor-dev.sh)
 #   TUTOR_URL=https://<ref>.supabase.co/functions/v1/tutor tools/tutor-smoke.sh   # deployed
@@ -87,5 +88,38 @@ post "$RUN-free" "null" "What is a flowlet, in one sentence?"
 if [ "$STATUS" = "200" ] && python3 -I -c 'import json,sys; o=json.loads(sys.argv[1]); assert o["fallback"] is False and o["detected_pick"] is None and o["reply"].strip()' "$BODY" 2>/dev/null; then
   pass "free question -> $(python3 -I -c 'import json,sys; print(json.loads(sys.argv[1])["reply"][:160])' "$BODY")"
 else fail "free question: HTTP $STATUS $BODY"; fi
+
+echo "Forced provider 429 (free quota used up)"
+if command -v deno >/dev/null; then
+  cd "$(dirname "$0")/.."
+  STUB_PORT=8788; Q_PORT=8789
+  # A stand-in for the provider that answers every call with 429.
+  python3 -I -c '
+import http.server, sys
+class H(http.server.BaseHTTPRequestHandler):
+    def do_POST(self):
+        self.rfile.read(int(self.headers.get("Content-Length", 0)))
+        self.send_response(429); self.send_header("retry-after", "30"); self.send_header("Content-Type", "application/json"); self.end_headers()
+        self.wfile.write(b"{\"error\":{\"message\":\"Rate limit reached\",\"code\":\"rate_limit_exceeded\"}}")
+    def log_message(self, *a): pass
+http.server.HTTPServer(("127.0.0.1", int(sys.argv[1])), H).serve_forever()' "$STUB_PORT" &
+  STUB_PID=$!
+  [ -f tools/.out/chunks.json ] || node tools/build-chunks.mjs >/dev/null
+  # A second tutor instance pointed at the stub; dummy key, no real secret involved.
+  GROQ_API_KEY=dummy-not-a-key TUTOR_MODEL=stub TUTOR_LLM_BASE_URL="http://127.0.0.1:$STUB_PORT" TUTOR_DEV=1 \
+    TUTOR_PORT="$Q_PORT" TUTOR_CHUNKS_FILE=tools/.out/chunks.json \
+    deno run --allow-net --allow-env --allow-read supabase/functions/tutor/index.ts >/dev/null 2>&1 &
+  Q_PID=$!
+  for _ in $(seq 1 60); do curl -s -o /dev/null "http://127.0.0.1:$Q_PORT" && break; sleep 0.5; done
+  SAVED_URL="$URL"; URL="http://127.0.0.1:$Q_PORT"
+  post "$RUN-quota" "F1" "Distributed, because of P1."
+  URL="$SAVED_URL"
+  kill "$Q_PID" "$STUB_PID" 2>/dev/null; wait "$Q_PID" "$STUB_PID" 2>/dev/null
+  if [ "$STATUS" = "429" ] && python3 -I -c 'import json,sys; o=json.loads(sys.argv[1]); assert o["error"] == "quota" and o["reply"]' "$BODY" 2>/dev/null; then
+    pass "provider 429 -> HTTP 429 {error: \"quota\"} (no retry): $(python3 -I -c 'import json,sys; print(json.loads(sys.argv[1])["reply"])' "$BODY")"
+  else fail "quota: HTTP $STATUS $BODY"; fi
+else
+  echo "  SKIP (deno not on PATH)"; fails=$((fails + 1))
+fi
 
 if [ "$fails" -eq 0 ]; then echo "ALL PASSED"; else echo "$fails FAILED"; exit 1; fi

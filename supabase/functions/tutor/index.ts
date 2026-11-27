@@ -3,8 +3,12 @@
 // the origin, the input and the per-session rate limits itself.
 //
 // Environment:
-//   ANTHROPIC_API_KEY   secret (supabase secrets set ...)
-//   TUTOR_MODEL         optional, default claude-haiku-5-5
+//   GROQ_API_KEY        secret (supabase secrets set ...); or TUTOR_LLM_KEY for another provider
+//   TUTOR_MODEL         required: the model id (chosen from the Groq console)
+//   TUTOR_LLM_BASE_URL  optional, default https://api.groq.com/openai/v1 (any OpenAI-compatible API)
+//   TUTOR_JSON_MODE     optional, json_schema (default, strict) or json_object
+//   TUTOR_MAX_TOKENS    optional, default 400
+//   TUTOR_REASONING_EFFORT  optional, for reasoning models (e.g. low)
 //   TUTOR_ORIGINS       optional, comma list, default https://leonshumil.github.io
 //   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY   injected by Supabase in deployed functions
 //   TUTOR_DB_KEY        optional: a secret key (sb_secret_...) to use instead of the service role key
@@ -13,7 +17,7 @@
 //   TUTOR_CHUNKS_FILE   use tools/.out/chunks.json and an in-memory store instead of the database
 //   TUTOR_PORT          port for Deno.serve
 import { createHandler } from "./handler.ts";
-import { anthropicLLM } from "./llm.ts";
+import { GROQ_BASE_URL, openAICompatibleLLM } from "./llm.ts";
 import { memoryStore, restStore, type Store } from "./store.ts";
 
 const env = (k: string) => Deno.env.get(k) ?? "";
@@ -30,14 +34,28 @@ async function makeStore(): Promise<Store> {
   return restStore({ url, key });
 }
 
+const llmKey = env("TUTOR_LLM_KEY") || env("GROQ_API_KEY");
+const model = env("TUTOR_MODEL");
+if (!llmKey) throw new Error("tutor: GROQ_API_KEY is not set");
+if (!model) throw new Error("tutor: TUTOR_MODEL is not set");
+const jsonMode = env("TUTOR_JSON_MODE") === "json_object" ? "json_object" : "json_schema";
+
 const handler = createHandler({
-  llm: anthropicLLM(),
+  llm: openAICompatibleLLM({
+    baseUrl: env("TUTOR_LLM_BASE_URL") || GROQ_BASE_URL,
+    key: llmKey,
+    model,
+    jsonMode,
+    maxTokens: Number(env("TUTOR_MAX_TOKENS")) || 400,
+    reasoningEffort: env("TUTOR_REASONING_EFFORT") || undefined,
+  }),
   store: await makeStore(),
   allowedOrigins: (env("TUTOR_ORIGINS") || "https://leonshumil.github.io").split(",").map((s) => s.trim()).filter(Boolean),
   allowLocalhost: env("TUTOR_DEV") === "1",
-  secrets: [env("ANTHROPIC_API_KEY"), env("TUTOR_DB_KEY"), env("SUPABASE_SERVICE_ROLE_KEY")],
+  secrets: [llmKey, env("TUTOR_DB_KEY"), env("SUPABASE_SERVICE_ROLE_KEY")],
 });
 
+console.log(`tutor: model ${model}, ${jsonMode}`);
 const port = env("TUTOR_PORT");
 if (port) Deno.serve({ port: Number(port) }, handler);
 else Deno.serve(handler);

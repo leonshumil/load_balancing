@@ -5,10 +5,12 @@
 //        message (<= 600 chars), state: { picks: {F1: branchId}, properties_used: {F1: ["P1"]} } }
 // -> 200 { reply, cites, detected_pick, properties_mentioned, ready_to_reveal, fallback }
 // -> 4xx/5xx { error, reply }   (reply is always something the UI can show)
+//    429 { error: "quota" } = the provider's free quota is used up: the client switches to
+//    the scripted fallback. Our own limits are 429 "too_fast" / "limit".
 //
 // The function never decides correctness: the client compares detected_pick with congaPick.
 import { BRANCH_IDS, FORKS } from "./forks.ts";
-import type { LLM } from "./llm.ts";
+import { type LLM, QuotaError } from "./llm.ts";
 import { buildMessages, type State, SYSTEM_PROMPT, type Turn } from "./prompt.ts";
 import { selectContext } from "./retrieval.ts";
 import { OUTPUT_SCHEMA, parseOutput, PROPERTY_IDS, type TutorOutput } from "./schema.ts";
@@ -23,6 +25,7 @@ export const MESSAGES = {
   bad_request: "Sorry, that message couldn't be sent. Please reload the page and try again.",
   too_long: `Please keep your message under ${MAX_MESSAGE_CHARS} characters.`,
   too_fast: "One message every few seconds, please. Try again in a moment.",
+  quota: "The tutor has reached its free usage limit for now. Carry on with the guided steps; your answers are saved.",
   limit: "You've used all 40 tutor messages for this homework. You can still finish the tree on your own; your answers are saved.",
   fallback: "Sorry, I couldn't answer that just now. Try again, or pick a branch for this fork and give a reason from P1–P5.",
   unavailable: "The tutor is unavailable right now. You can still finish the tree on your own; your answers are saved.",
@@ -152,7 +155,8 @@ export function createHandler(deps: HandlerDeps) {
     let out: TutorOutput | null = null;
     let model: string | null = null;
     let inTok = 0, outTok = 0;
-    for (let attempt = 0; attempt < 2 && !out; attempt++) {
+    let quota = false;
+    for (let attempt = 0; attempt < 2 && !out && !quota; attempt++) {
       try {
         const res = await deps.llm({ system: SYSTEM_PROMPT, messages, schema: OUTPUT_SCHEMA });
         model = res.model;
@@ -167,12 +171,18 @@ export function createHandler(deps: HandlerDeps) {
           out = parsed.value;
         }
       } catch (e) {
-        // Log the error class only: provider messages can carry request details.
-        console.error(`tutor LLM error (attempt ${attempt + 1}):`, e instanceof Error ? e.name : typeof e);
+        if (e instanceof QuotaError) {
+          // Free quota hit: no retry (a retry would only burn more quota).
+          console.warn(`tutor quota hit (retry-after ${e.retryAfterSeconds ?? "?"} s)`);
+          quota = true;
+        } else {
+          // Log the error class and short message only (LLMError never holds the key).
+          console.error(`tutor LLM error (attempt ${attempt + 1}):`, e instanceof Error ? `${e.name} ${e.name === "LLMError" ? e.message : ""}` : typeof e);
+        }
       }
     }
     const fallback = out === null;
-    const result: TutorOutput = out ?? { reply: MESSAGES.fallback, cites: [], detected_pick: null, properties_mentioned: [], ready_to_reveal: false };
+    const result: TutorOutput = out ?? { reply: quota ? MESSAGES.quota : MESSAGES.fallback, cites: [], detected_pick: null, properties_mentioned: [], ready_to_reveal: false };
 
     try {
       await deps.store.log({
@@ -194,6 +204,7 @@ export function createHandler(deps: HandlerDeps) {
       console.error("tutor log error:", e instanceof Error ? e.message : e); // the student still gets the reply
     }
 
+    if (quota) return fail(429, "quota");
     return json(200, { ...result, fallback });
   };
 }

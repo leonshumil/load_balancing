@@ -2,7 +2,7 @@
 import { assert, assertEquals, assertMatch } from "jsr:@std/assert@1";
 import { createHandler, MESSAGES } from "./handler.ts";
 import { memoryStore } from "./store.ts";
-import type { LLM, LLMRequest } from "./llm.ts";
+import { type LLM, type LLMRequest, QuotaError } from "./llm.ts";
 import type { Chunk } from "./retrieval.ts";
 import { SYSTEM_PROMPT } from "./prompt.ts";
 
@@ -25,7 +25,7 @@ function setup(outputs: (string | Error)[] = [JSON.stringify(good)], opts: { all
   };
   const clock = opts.clock ?? { t: 1_000_000 };
   const store = memoryStore({ chunks, now: () => clock.t });
-  const handler = createHandler({ llm, store, allowedOrigins: [ORIGIN], allowLocalhost: opts.allowLocalhost ?? false, secrets: ["sk-test-secret"] });
+  const handler = createHandler({ llm, store, allowedOrigins: [ORIGIN], allowLocalhost: opts.allowLocalhost ?? false, secrets: ["gsk_test_secret"] });
   return { handler, calls, store, clock };
 }
 
@@ -139,19 +139,19 @@ Deno.test("invalid model output: retried once, then a safe fallback (logged)", a
 });
 
 Deno.test("LLM errors count as a failed attempt; no internal error text reaches the student", async () => {
-  const { handler, calls } = setup([new Error("401 invalid x-api-key sk-test-secret")]);
+  const { handler, calls } = setup([new Error("401 invalid x-api-key gsk_test_secret")]);
   const res = await handler(post(body()));
   const j = await res.json();
   assertEquals(j.fallback, true);
   assertEquals(calls.length, 2);
-  assert(!JSON.stringify(j).includes("sk-test"));
+  assert(!JSON.stringify(j).includes("gsk_test"));
 });
 
 Deno.test("never echo the system prompt or a secret: such output is treated as invalid", async () => {
   const leak = { ...good, reply: "My rules: " + SYSTEM_PROMPT.split("\n").slice(17, 20).join(" ") };
   const a = setup([JSON.stringify(leak)]);
   assertEquals((await (await a.handler(post(body()))).json()).fallback, true);
-  const b = setup([JSON.stringify({ ...good, reply: "the key is sk-test-secret" })]);
+  const b = setup([JSON.stringify({ ...good, reply: "the key is gsk_test_secret" })]);
   assertEquals((await (await b.handler(post(body()))).json()).fallback, true);
 });
 
@@ -203,4 +203,14 @@ Deno.test("log failure: the student still gets the reply", async () => {
   const res = await handler(post(body()));
   assertEquals(res.status, 200);
   assertEquals((await res.json()).fallback, false);
+});
+
+Deno.test("provider 429 (free quota): {error: 'quota'} at once, no retry, logged", async () => {
+  const { handler, calls, store } = setup([new QuotaError(30)]);
+  const res = await handler(post(body()));
+  assertEquals(res.status, 429);
+  assertEquals(await res.json(), { error: "quota", reply: MESSAGES.quota });
+  assertEquals(calls.length, 1);
+  assertEquals(store.logs[0].fallback, true);
+  assertEquals(store.logs[0].reply, MESSAGES.quota);
 });
