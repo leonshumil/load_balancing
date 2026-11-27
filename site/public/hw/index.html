@@ -8,11 +8,12 @@
   <script src="../shared/theme-boot.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=STIX+Two+Text:wght@400;700&display=swap">
   <link rel="stylesheet" href="../shared/tokens.css">
   <link rel="stylesheet" href="../shared/base.css">
   <link rel="stylesheet" href="../shared/ui.css">
-  <link rel="stylesheet" href="hw.css">
+  <link rel="stylesheet" href="hw.css?v=2">
+  <script src="passage-zoom.js?v=2" defer></script>
   <script type="module">
     import { initPage } from "./main.js";
     initPage();
@@ -115,7 +116,47 @@
           <div class="section-title-row"><h2 id="read-title">1 · Read</h2><span class="badge badge-gold">12 min</span></div>
           <p class="subtitle">A few passages from the CONGA paper, each with exact pages and lines and a link to the PDF.</p>
         </header>
-        <div class="slot">Reading passages</div>
+        <div class="reading">
+          <article class="passage" aria-labelledby="passage-1-title">
+            <h3 class="passage-title" id="passage-1-title"><span class="passage-n">1</span>Why ECMP falls short</h3>
+            <p class="passage-text">
+              However, it is well known <span class="cite">[2, 41, 9, 27, 44, 10]</span> that ECMP can balance load poorly. First, because ECMP randomly hashes flows to paths, hash collisions can cause significant imbalance if there are a few large flows. More importantly, ECMP uses <mark>a purely local decision</mark> to split traffic among equal cost paths without knowledge of potential downstream congestion on each path. Thus ECMP fares poorly with <mark>asymmetry caused by link failures</mark> that occur frequently and are disruptive in datacenters <span class="cite">[17, 34]</span>.
+            </p>
+            <p class="passage-caption"><b>Section 1</b> · CONGA, SIGCOMM 2014 · Why ECMP falls short (Part 1 of 5)</p>
+          </article>
+
+          <article class="passage" aria-labelledby="passage-2-title">
+            <h3 class="passage-title" id="passage-2-title"><span class="passage-n">2</span>Why previous approaches fail</h3>
+            <p class="passage-text">
+              Broadly speaking, the prior work on addressing ECMP’s shortcomings can be classified as either centralized scheduling (e.g., Hedera <span class="cite">[2]</span>), local switch mechanisms (e.g., Flare <span class="cite">[27]</span>), or host-based transport protocols (e.g., MPTCP <span class="cite">[41]</span>). These approaches all have important drawbacks. <mark>Centralized schemes are too slow for the traffic volatility</mark> in datacenters <span class="cite">[28, 8]</span> and <mark>local congestion-aware mechanisms are suboptimal and can perform even worse than ECMP with asymmetry</mark> (<span class="cite">§2.4</span>). <mark>Host-based methods such as MPTCP are challenging to deploy</mark> because network operators often do not control the end-host stack (e.g., in a public cloud) and even when they do, some high performance applications (such as low latency storage systems <span class="cite">[39, 7]</span>) bypass the kernel and implement their own transport.
+            </p>
+            <p class="passage-caption"><b>Section 1</b> · CONGA, SIGCOMM 2014 · Why previous approaches fail (Part 2 of 5)</p>
+          </article>
+
+          <article class="passage" aria-labelledby="passage-3-title">
+            <h3 class="passage-title" id="passage-3-title"><span class="passage-n">3</span>CONGA in the design space</h3>
+            <p class="passage-text">
+              Figure 1 surveys the design space for load balancing and places CONGA in context by following the thick red lines through the design tree. At the highest level, CONGA is a distributed scheme to allow <mark>rapid round-trip timescale reaction to congestion</mark> to cope with bursty datacenter traffic <span class="cite">[28, 8]</span>. CONGA is <mark>implemented within the network to avoid the deployment issues of host-based methods</mark> and additional complexity in the transport layer. To deal with asymmetry, unlike earlier proposals such as Flare <span class="cite">[27]</span> and LocalFlow <span class="cite">[44]</span> that only use local information, <mark>CONGA uses global congestion information,</mark> a design choice justified in detail in <span class="cite">§2.4</span>.
+            </p>
+            <p class="passage-caption"><b>Section 1</b> · CONGA, SIGCOMM 2014 · CONGA in the design space (Part 3 of 5)</p>
+          </article>
+
+          <article class="passage" aria-labelledby="passage-4-title">
+            <h3 class="passage-title" id="passage-4-title"><span class="passage-n">4</span>Leaf-to-leaf feedback</h3>
+            <p class="passage-text">
+              Next, the most general design would sense congestion on every link and send generalized link state packets to compute congestion-sensitive routes <span class="cite">[16, 48, 51, 36]</span>. However, this is an N-party protocol with complex control loops, likely to be fragile and hard to deploy... CONGA instead uses <mark>a 2-party “leaf-to-leaf” mechanism</mark> to convey path-wise congestion metrics between pairs of top-of-the-rack switches (also termed leaf switches) in a datacenter fabric. The leaf-to-leaf scheme is <mark>provably near-optimal in typical 2-tier Clos topologies</mark> (henceforth called Leaf-Spine), simple to analyze, and easy to deploy.
+            </p>
+            <p class="passage-caption"><b>Section 1</b> · CONGA, SIGCOMM 2014 · Leaf-to-leaf feedback (Part 4 of 5)</p>
+          </article>
+
+          <article class="passage" aria-labelledby="passage-5-title">
+            <h3 class="passage-title" id="passage-5-title"><span class="passage-n">5</span>Flowlets</h3>
+            <p class="passage-text">
+              Finally, in the lowest branch of the design tree, CONGA is constructed <mark>work with flowlets <span class="cite">[27]</span> to achieve a higher granularity of control</mark> and resilience to the flow size distribution while <mark>not requiring any modifications to TCP.</mark> Of course, CONGA could also be made to operate per packet by using a very small flowlet inactivity gap (see <span class="cite">§3.4</span>) to perform optimally with a future reordering-resilient TCP.
+            </p>
+            <p class="passage-caption"><b>Section 1</b> · CONGA, SIGCOMM 2014 · Flowlets (Part 5 of 5)</p>
+          </article>
+        </div>
       </section>
 
       <section id="watch" class="part panel" aria-labelledby="watch-title">
