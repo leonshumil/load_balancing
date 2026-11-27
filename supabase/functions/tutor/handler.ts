@@ -7,6 +7,9 @@
 // -> 4xx/5xx { error, reply }   (reply is always something the UI can show)
 //    429 { error: "quota" } = the provider's free quota is used up: the client switches to
 //    the scripted fallback. Our own limits are 429 "too_fast" / "limit".
+//    401 { error: "class_code" } = missing or wrong class_code (TUTOR_CLASS_CODE).
+// POST { action: "passage", class_code, id: "2.4-p2" } -> 200 { id, section, page, text } | 404
+//    (the page shows cited chunks without holding the paper's text).
 //
 // The function never decides correctness: the client compares detected_pick with congaPick.
 import { BRANCH_IDS, FORKS } from "./forks.ts";
@@ -22,6 +25,8 @@ const MAX_HISTORY_TEXT = 600; // characters per earlier turn
 const MAX_BODY_BYTES = 32_000;
 
 export const MESSAGES = {
+  class_code: "The tutor needs the class code. Ask your lecturer for it; until then, the guided mode works.",
+  not_found: "That passage isn't available.",
   bad_request: "Sorry, that message couldn't be sent. Please reload the page and try again.",
   too_long: `Please keep your message under ${MAX_MESSAGE_CHARS} characters.`,
   too_fast: "One message every few seconds, please. Try again in a moment.",
@@ -44,6 +49,7 @@ export type HandlerDeps = {
   allowLocalhost: boolean;
   secrets?: string[]; // values that must never appear in a reply (API keys)
   debug?: boolean; // local runs: add an X-Tutor-Calls header with per-call model and tokens
+  classCode?: string; // TUTOR_CLASS_CODE; when empty every request is refused (fail closed)
   now?: () => number;
 };
 
@@ -96,6 +102,9 @@ function parseInput(raw: unknown): Input {
 export function createHandler(deps: HandlerDeps) {
   const secrets = (deps.secrets ?? []).filter((s) => s && s.length >= 8);
   const now = deps.now ?? Date.now;
+  const normCode = (c: unknown) => (typeof c === "string" ? c.trim().toLowerCase() : "");
+  const expectedCode = normCode(deps.classCode);
+  const codeOk = (c: unknown) => expectedCode !== "" && normCode(c) === expectedCode;
   // After a 429 from the primary, send turns straight to the overflow model until
   // retry-after has passed (per isolate; saves a wasted call per turn).
   let primaryCoolUntil = 0;
@@ -134,16 +143,32 @@ export function createHandler(deps: HandlerDeps) {
     }
     if (req.method !== "POST") return fail(405, "method");
 
-    let input: Input;
+    let raw: unknown;
     try {
       const text = await req.text();
-      if (text.length > MAX_BODY_BYTES) throw new BadRequest("bad_request");
-      let raw: unknown;
+      if (text.length > MAX_BODY_BYTES) return fail(400, "bad_request");
+      raw = JSON.parse(text);
+    } catch {
+      return fail(400, "bad_request");
+    }
+    const rawObj = (raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {}) as Record<string, unknown>;
+    if (!codeOk(rawObj.class_code)) return fail(401, "class_code");
+
+    if (rawObj.action === "passage") {
+      const id = rawObj.id;
+      if (typeof id !== "string" || !/^[a-z0-9.]{1,12}-p\d{1,3}$/.test(id)) return fail(400, "bad_request");
       try {
-        raw = JSON.parse(text);
-      } catch {
-        throw new BadRequest("bad_request");
+        const c = (await deps.store.getChunks()).find((x) => x.id === id);
+        if (!c) return fail(404, "not_found");
+        return json(200, { id: c.id, section: c.section, page: c.page, text: c.text });
+      } catch (e) {
+        console.error("tutor store error:", e instanceof Error ? e.message : e);
+        return fail(500, "unavailable");
       }
+    }
+
+    let input: Input;
+    try {
       input = parseInput(raw);
     } catch (e) {
       return fail(400, e instanceof BadRequest ? e.code : "bad_request");
@@ -203,6 +228,7 @@ export function createHandler(deps: HandlerDeps) {
           calls.push({ model: label, status: "error", ms: now() - t0 });
           // Log the error class and short message only (LLMError never holds the key).
           console.error(`tutor LLM error (${label}):`, e instanceof Error ? `${e.name} ${e.name === "LLMError" ? e.message : ""}` : typeof e);
+          if (deps.debug && e instanceof Error && "detail" in e && e.detail) console.error(`  detail: ${String(e.detail).replace(/\s+/g, " ")}`);
         }
       }
     }

@@ -33,7 +33,8 @@ export class QuotaError extends Error {
 
 /** Any other provider failure. The message never includes the key or the request body. */
 export class LLMError extends Error {
-  constructor(message: string) {
+  /** detail: the provider's error message, for server-side debug logs only (never sent to students). */
+  constructor(message: string, public detail = "") {
     super(message);
     this.name = "LLMError";
   }
@@ -84,10 +85,13 @@ export function openAICompatibleLLM(cfg: LLMConfig): LLM {
     if (!res.ok) {
       // Keep only the provider's error code (e.g. json_validate_failed), not its message.
       let code = "";
+      let detail = "";
       try {
-        code = (await res.json())?.error?.code ?? "";
+        const err = (await res.json())?.error;
+        code = err?.code ?? "";
+        detail = [err?.message, err?.failed_generation].filter(Boolean).join(" | ").slice(0, 600);
       } catch { /* not JSON */ }
-      throw new LLMError(`HTTP ${res.status}${code ? ` ${code}` : ""}`);
+      throw new LLMError(`HTTP ${res.status}${code ? ` ${code}` : ""}`, detail);
     }
     const data = await res.json();
     const choice = data?.choices?.[0];
