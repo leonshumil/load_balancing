@@ -4,6 +4,7 @@ import { initTheme } from "../shared/theme.js";
 import { createProgress, trackTime } from "../shared/progress.js";
 import { scrollSpy } from "../shared/ui.js";
 import { initTutor } from "./js/tutor/view.js";
+import { initRead, initWatch } from "./js/sections/view.js";
 
 export const SECTIONS = ["read", "watch", "tutor", "lab", "questions"];
 
@@ -49,6 +50,8 @@ export function initPage() {
   trackTime({ storeKey: "hw:time" });
   const links = new Map([...document.querySelectorAll(".rail-btn[data-section]")].map((a) => [a.dataset.section, a]));
   scrollSpy(links);
+  initRead({ section: document.getElementById("read"), progress });
+  initWatch({ section: document.getElementById("watch"), progress });
   initTutor({ root: document.querySelector("[data-tutor]"), badge: document.querySelector("[data-tutor-badge]"), progress });
   wideWhileInView(document.getElementById("tutor"));
 }
