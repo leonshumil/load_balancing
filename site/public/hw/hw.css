@@ -187,6 +187,8 @@
 .fig1-mine { fill: none; stroke: var(--lavender); stroke-width: 2; }
 [data-theme="light"] .fig1-mine { stroke: var(--violet-soft); }
 .fig1-label { fill: var(--muted); font-size: 12px; font-weight: 600; }
+/* a halo in the tree's background colour, so lines passing behind a label don't cut through it */
+.fig1-label, .fig1-cost { paint-order: stroke; stroke: var(--panel-raised); stroke-width: 4px; stroke-linejoin: round; }
 .fig1-label-sub { font-size: 10px; font-weight: 400; }
 .fig1-node.is-current .fig1-label, .fig1-node.is-path .fig1-label { fill: var(--text); }
 .fig1-cost { fill: var(--gold); font-size: 9.5px; font-style: italic; }

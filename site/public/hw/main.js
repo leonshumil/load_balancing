@@ -20,7 +20,19 @@ function wideWhileInView(section) {
   if (!app || !section || !("IntersectionObserver" in window)) return;
   const desktop = matchMedia("(min-width: 1280px)");
   let inView = false;
-  const apply = () => app.classList.toggle("is-wide", inView && desktop.matches);
+  // Switching changes the width of everything above, so their height too: switch at once and
+  // scroll by the difference, so the section stays exactly where it was on the screen.
+  const apply = () => {
+    const on = inView && desktop.matches;
+    if (app.classList.contains("is-wide") === on) return;
+    const before = section.getBoundingClientRect().top;
+    const root = document.documentElement;
+    root.style.overflowAnchor = "none"; // we correct the scroll ourselves
+    app.classList.toggle("is-wide", on);
+    const shift = section.getBoundingClientRect().top - before;
+    if (shift) scrollBy({ top: shift, behavior: "instant" }); // not smooth: the page sets scroll-behavior: smooth
+    requestAnimationFrame(() => { root.style.overflowAnchor = ""; });
+  };
   new IntersectionObserver(([e]) => { inView = e.isIntersecting; apply(); }, { rootMargin: "-45% 0px -45% 0px" }).observe(section);
   desktop.addEventListener("change", apply);
   toggle?.addEventListener("click", () => {

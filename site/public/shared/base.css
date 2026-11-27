@@ -77,7 +77,6 @@ h3 { font-size: 1.1rem; }
 /* Wide mode (≥1280px, while a wide section such as #tutor is in view; set by JS):
    the main column grows to ~1400px and the progress column folds into a thin strip of
    section numbers, which expands over the page on hover, focus or its toggle. */
-.app { transition: grid-template-columns 0.35s ease, max-width 0.35s ease; }
 .side-toggle { display: none; }
 @media (min-width: 1280px) {
   .app.is-wide {
@@ -104,7 +103,7 @@ h3 { font-size: 1.1rem; }
   .app.is-wide .side:is(:hover, :focus-within, .is-open) .progress-panel { width: 300px; margin-left: -256px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .app, .app.is-wide .side .progress-panel { transition: none; }
+  .app.is-wide .side .progress-panel { transition: none; }
 }
 
 @media (max-width: 1199.98px) {

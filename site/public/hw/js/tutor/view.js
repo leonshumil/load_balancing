@@ -310,7 +310,7 @@ export function initTutor({ root, badge, progress }) {
         x.agree ? null : h("span", { class: "recap-paper" }, `paper: ${x.congaLabel}`)),
       h("td", { class: "col-paper" }, x.congaLabel),
       h("td", {}, [...x.hit.map((p) => `${p} ✓`), ...x.extra].join(", ") || "–"),
-      h("td", { class: "recap-missed" }, x.missed.join(", ") || "–")));
+      h("td", { class: x.missed.length ? "recap-missed" : "" }, x.missed.join(", ") || "–")));
     const missedText = Object.entries(r.missed).map(([p, forks]) => `${p} ${propName[p]} (${forks.join(", ")})`).join("; ");
     const usedSet = new Set(r.propertiesUsed);
     const propSummary = h("ul", { class: "chips recap-props", "aria-label": "Properties across your walk" },
