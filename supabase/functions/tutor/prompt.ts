@@ -88,24 +88,22 @@ function paperBlock(chunks: Chunk[]): string {
  * Messages for one call (after the system prompt, which llm.ts sends first):
  * 1. a system message with the fork and its base excerpts. It depends only on the fork, so
  *    the prefix [system prompt, this] is identical for every student on that fork and the
- *    provider can cache it (Groq: cached tokens don't count toward the limits);
- * 2. the earlier turns as plain text (consecutive same-role turns merged; starts with a user turn);
- * 3. a user message with the student's state, any extra BM25 excerpts, and their message.
+ *    provider can cache it;
+ * 2. one user message: the earlier turns as a transcript (<earlier_turns>), the student's
+ *    state, any extra BM25 excerpts, and their message.
+ * The earlier turns are a transcript, not assistant messages: replayed plain-text assistant
+ * turns made the model answer in plain text instead of JSON (Groq json_validate_failed).
  */
 export function buildMessages(opts: { forkId: string | null; history: Turn[]; message: string; state: State; base: Chunk[]; extra: Chunk[] }): Message[] {
   const context = [forkBlock(opts.forkId), paperBlock(opts.base)].join("\n\n");
+  const transcript = opts.history.length
+    ? `<earlier_turns>\n${opts.history.map((t) => `${t.role === "user" ? "Student" : "Tutor"}: ${neutralize(t.text)}`).join("\n")}\n</earlier_turns>`
+    : null;
   const last = [
+    ...(transcript ? [transcript] : []),
     stateBlock(opts.state),
     ...(opts.extra.length ? [paperBlock(opts.extra)] : []),
     `<student_message>\n${neutralize(opts.message)}\n</student_message>`,
   ].join("\n\n");
-  const turns: Turn[] = [...opts.history.map((t) => ({ role: t.role, text: neutralize(t.text) })), { role: "user", text: last }];
-  if (turns[0].role === "assistant") turns.unshift({ role: "user", text: "(The exercise starts.)" });
-  const merged: Message[] = [{ role: "system", content: context }];
-  for (const t of turns) {
-    const prev = merged.length > 1 ? merged[merged.length - 1] : null;
-    if (prev && prev.role === t.role) prev.content += "\n\n" + t.text;
-    else merged.push({ role: t.role, content: t.text });
-  }
-  return merged;
+  return [{ role: "system", content: context }, { role: "user", content: last }];
 }

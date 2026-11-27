@@ -228,6 +228,7 @@ export function createHandler(deps: HandlerDeps) {
           calls.push({ model: label, status: "error", ms: now() - t0 });
           // Log the error class and short message only (LLMError never holds the key).
           console.error(`tutor LLM error (${label}):`, e instanceof Error ? `${e.name} ${e.name === "LLMError" ? e.message : ""}` : typeof e);
+          if (deps.debug && e instanceof Error && "detail" in e && e.detail) console.error(`  detail: ${String(e.detail).replace(/\s+/g, " ")}`);
         }
       }
     }

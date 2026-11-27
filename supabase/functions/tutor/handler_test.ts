@@ -341,3 +341,10 @@ Deno.test("passage: unknown id -> 404; bad id -> 400; wrong code -> 401", async 
   assertEquals((await handler(post({ action: "passage", class_code: CODE, id: "../etc" }))).status, 400);
   assertEquals((await handler(post({ action: "passage", class_code: "nope", id: "2.4-p2" }))).status, 401);
 });
+
+Deno.test("earlier turns go in as a transcript, never as assistant messages (they made the model answer in plain text)", async () => {
+  const { handler, calls } = setup();
+  await handler(post(body({ history: [{ role: "user", text: "Distributed (P1)" }, { role: "assistant", text: "Why P1?" }] })));
+  assertEquals(calls[0].messages.map((m) => m.role), ["system", "user"]);
+  assertMatch(calls[0].messages[1].content, /<earlier_turns>\nStudent: Distributed \(P1\)\nTutor: Why P1\?\n<\/earlier_turns>/);
+});
