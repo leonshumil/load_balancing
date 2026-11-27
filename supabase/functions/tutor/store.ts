@@ -28,7 +28,7 @@ export interface Store {
   log(row: LogRow): Promise<void>;
 }
 
-export const LIMITS = { maxMessages: 40, gapMs: 3000 };
+export const LIMITS = { maxMessages: 25, gapMs: 3000 }; // 25 per session (user, 2026-11-27: ~12 students on the Groq free tier)
 const CHUNK_TTL_MS = 10 * 60 * 1000;
 
 export function restStore(opts: { url: string; key: string; fetch?: typeof fetch }): Store {

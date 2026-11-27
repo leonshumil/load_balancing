@@ -19,8 +19,8 @@ Deno.test("BRANCH_IDS are the Figure 1 nodes (CONGA Fig 1)", () => {
   assertEquals([...BRANCH_IDS].sort(), Object.keys(TREE).filter((id) => id !== "root").sort());
 });
 
-Deno.test("retrieval sections per fork (step 11: F1 §2.2, F2 §2.3, F3 §2.4, F4 §1 + §2.5, F5 §2.6)", () => {
-  assertEquals(Object.fromEntries(Object.entries(FORKS).map(([id, f]) => [id, f.sections])), {
-    F1: ["2.2"], F2: ["2.3"], F3: ["2.4"], F4: ["1", "2.5"], F5: ["2.6"],
+Deno.test("retrieval per fork (step 11: F1 §2.2, F2 §2.3, F3 §2.4, F4 §1 + §2.5, F5 §2.6); F4 takes only §1's link-state paragraph", () => {
+  assertEquals(Object.fromEntries(Object.entries(FORKS).map(([id, f]) => [id, [f.sections, f.extraChunks]])), {
+    F1: [["2.2"], []], F2: [["2.3"], []], F3: [["2.4"], []], F4: [["2.5"], ["1-p5"]], F5: [["2.6"], []],
   });
 });

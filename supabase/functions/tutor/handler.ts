@@ -1,7 +1,7 @@
 // The tutor endpoint, with its dependencies passed in (index.ts wires the real ones;
 // handler_test.ts uses a mock LLM and the in-memory store).
 //
-// POST { session_id, fork_id: "F1".."F5" | null, history: [{role, text}] (last 10 used),
+// POST { session_id, fork_id: "F1".."F5" | null, history: [{role, text}] (last 6 used),
 //        message (<= 600 chars), state: { picks: {F1: branchId}, properties_used: {F1: ["P1"]} } }
 // -> 200 { reply, cites, detected_pick, properties_mentioned, ready_to_reveal, fallback }
 // -> 4xx/5xx { error, reply }   (reply is always something the UI can show)
@@ -14,11 +14,11 @@ import { type LLM, QuotaError } from "./llm.ts";
 import { buildMessages, type State, SYSTEM_PROMPT, type Turn } from "./prompt.ts";
 import { selectContext } from "./retrieval.ts";
 import { OUTPUT_SCHEMA, parseOutput, PROPERTY_IDS, type TutorOutput } from "./schema.ts";
-import type { Store } from "./store.ts";
+import { LIMITS, type Store } from "./store.ts";
 
 export const MAX_MESSAGE_CHARS = 600;
-const MAX_HISTORY = 10;
-const MAX_HISTORY_TEXT = 2000;
+const MAX_HISTORY = 6; // turns sent to the model (saves tokens on the free tier)
+const MAX_HISTORY_TEXT = 600; // characters per earlier turn
 const MAX_BODY_BYTES = 32_000;
 
 export const MESSAGES = {
@@ -26,7 +26,7 @@ export const MESSAGES = {
   too_long: `Please keep your message under ${MAX_MESSAGE_CHARS} characters.`,
   too_fast: "One message every few seconds, please. Try again in a moment.",
   quota: "The tutor has reached its free usage limit for now. Carry on with the guided steps; your answers are saved.",
-  limit: "You've used all 40 tutor messages for this homework. You can still finish the tree on your own; your answers are saved.",
+  limit: `You've used all ${LIMITS.maxMessages} tutor messages for this homework. You can still finish the tree on your own; your answers are saved.`,
   fallback: "Sorry, I couldn't answer that just now. Try again, or pick a branch for this fork and give a reason from P1–P5.",
   unavailable: "The tutor is unavailable right now. You can still finish the tree on your own; your answers are saved.",
   forbidden: "This tutor only works from the course homework page.",
@@ -149,7 +149,7 @@ export function createHandler(deps: HandlerDeps) {
     }
 
     const ctx = selectContext(chunks, input.fork_id, input.message);
-    const messages = buildMessages({ forkId: input.fork_id, history: input.history, message: input.message, state: input.state, chunks: ctx.chunks });
+    const messages = buildMessages({ forkId: input.fork_id, history: input.history, message: input.message, state: input.state, base: ctx.base, extra: ctx.extra });
     const citable = ctx.chunks.map((c) => c.id);
 
     let out: TutorOutput | null = null;

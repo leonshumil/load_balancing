@@ -1,11 +1,13 @@
 // Fork data the tutor function needs. Source of truth: site/public/hw/js/path/model.js
 // (CONGA Fig 1); forks_test.ts fails if this copy drifts. `sections` = which paper
-// sections to retrieve for the fork (step 11). The function never scores answers:
+// sections to retrieve for the fork (step 11), `extraChunks` = single chunks from other
+// sections (F4 takes only §1's link-state paragraph, not all of §1, to save tokens). The function never scores answers:
 // the client compares detected_pick with congaPick.
 
 export type Fork = {
   section: string;
   sections: string[];
+  extraChunks: string[];
   question: string;
   options: { id: string; label: string }[];
   congaPick: string;
@@ -14,9 +16,8 @@ export type Fork = {
 export const FORKS: Record<string, Fork> = {
   "F1": {
     "section": "§2.2",
-    "sections": [
-      "2.2"
-    ],
+    "sections": ["2.2"],
+    "extraChunks": [],
     "question": "Datacenter traffic is bursty and unpredictable. Should one scheduler with a view of the whole fabric decide the paths, or should the decision be spread across the fabric?",
     "options": [
       {
@@ -32,9 +33,8 @@ export const FORKS: Record<string, Fork> = {
   },
   "F2": {
     "section": "§2.3",
-    "sections": [
-      "2.3"
-    ],
+    "sections": ["2.3"],
+    "extraChunks": [],
     "question": "Many devices share the decision. Should it live in the transport stack of the end-hosts, or in the switches of the fabric?",
     "options": [
       {
@@ -50,9 +50,8 @@ export const FORKS: Record<string, Fork> = {
   },
   "F3": {
     "section": "§2.4",
-    "sections": [
-      "2.4"
-    ],
+    "sections": ["2.4"],
+    "extraChunks": [],
     "question": "Leaf-spine fabrics become asymmetric. Can a switch balance using only its own links?",
     "options": [
       {
@@ -68,10 +67,8 @@ export const FORKS: Record<string, Fork> = {
   },
   "F4": {
     "section": "§2.5",
-    "sections": [
-      "1",
-      "2.5"
-    ],
+    "sections": ["2.5"],
+    "extraChunks": ["1-p5"],
     "question": "Switches need to know about congestion beyond their own links. Should every switch learn the state of every link, or should only the leaves at the two ends of a path exchange it?",
     "options": [
       {
@@ -87,9 +84,8 @@ export const FORKS: Record<string, Fork> = {
   },
   "F5": {
     "section": "§2.6",
-    "sections": [
-      "2.6"
-    ],
+    "sections": ["2.6"],
+    "extraChunks": [],
     "question": "The source leaf knows how congested each path is. What should it move from one path to another: a whole flow, a burst of packets, or each packet on its own?",
     "options": [
       {

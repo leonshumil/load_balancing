@@ -1,14 +1,18 @@
 // Deterministic retrieval for the tutor (step 11). No embeddings:
-// 1. always §2.1 (the five properties) and the Figure 1 chunk,
-// 2. the current fork's sections (F1 §2.2, F2 §2.3, F3 §2.4, F4 §1 + §2.5, F5 §2.6 incl. 2.6.x),
-// 3. BM25 over all chunks for the student's message,
-// in that order, up to MAX_WORDS of paper text.
+// base  = always §2.1 (the five properties) and the Figure 1 chunk, then the current fork's
+//         sections (F1 §2.2, F2 §2.3, F3 §2.4, F4 §2.5 + §1's link-state paragraph,
+//         F5 §2.6 incl. 2.6.x). The base depends only on the fork, so it is the same for every
+//         student on that fork (a cacheable prefix).
+// extra = BM25 over all chunks for the student's message: 1 new chunk on a fork turn,
+//         up to 3 for a free question.
+// At most MAX_WORDS of paper in total (the Groq free tier counts every token).
 import { FORKS } from "./forks.ts";
 
 export type Chunk = { id: string; section: string; page: number; text: string; figures?: number[] };
 
-export const MAX_WORDS = 2500;
-const BM25_HITS = 4;
+export const MAX_WORDS = 1400;
+const HITS_ON_FORK = 1;
+const HITS_FREE = 3;
 const K1 = 1.2;
 const B = 0.75;
 
@@ -70,7 +74,7 @@ export function buildIndex(chunks: Chunk[]): Index {
 }
 
 /** Top-k chunks by BM25 for `query` (score > 0 only). */
-export function bm25Search(index: Index, query: string, k = BM25_HITS): Chunk[] {
+export function bm25Search(index: Index, query: string, k = HITS_FREE): Chunk[] {
   const terms = [...new Set(tokenize(query))];
   if (!terms.length) return [];
   const N = index.chunks.length;
@@ -107,18 +111,26 @@ function indexFor(chunks: Chunk[]): Index {
 export function selectContext(chunks: Chunk[], forkId: string | null, message: string, maxWords = MAX_WORDS) {
   if (forkId !== null && !FORKS[forkId]) throw new Error(`unknown fork: ${forkId}`);
   const sorted = [...chunks].sort((a, b) => compareChunkIds(a.id, b.id));
+  const fork = forkId ? FORKS[forkId] : null;
   const always = sorted.filter((c) => inSection(c, "2.1") || c.figures?.includes(1));
-  const own = forkId ? sorted.filter((c) => FORKS[forkId].sections.some((s) => inSection(c, s))) : [];
-  const hits = bm25Search(indexFor(chunks), message, forkId ? BM25_HITS : BM25_HITS + 2);
+  const own = fork ? sorted.filter((c) => fork.sections.some((s) => inSection(c, s)) || fork.extraChunks.includes(c.id)) : [];
 
-  const picked: Chunk[] = [];
+  const base: Chunk[] = [];
   let words = 0;
-  for (const c of [...always, ...own, ...hits]) {
-    if (picked.includes(c)) continue;
+  const add = (list: Chunk[], c: Chunk) => {
     const w = wordCount(c.text);
-    if (words + w > maxWords) continue;
-    picked.push(c);
+    if (base.includes(c) || list.includes(c) || words + w > maxWords) return false;
+    list.push(c);
     words += w;
+    return true;
+  };
+  for (const c of [...always, ...own]) add(base, c);
+
+  const extra: Chunk[] = [];
+  const want = fork ? HITS_ON_FORK : HITS_FREE;
+  for (const c of bm25Search(indexFor(chunks), message, want + base.length)) {
+    if (extra.length >= want) break;
+    add(extra, c);
   }
-  return { chunks: picked, words };
+  return { base, extra, chunks: [...base, ...extra], words };
 }

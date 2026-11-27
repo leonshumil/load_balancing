@@ -3,7 +3,7 @@
 -- edge function). Instructors read the log through tutor_log_read(p_key).
 -- Rollback: supabase/rollbacks/20261127190100_tutor.down.sql
 
--- Per-session usage: 40 messages per session, at most one every 3 s (checked in tutor_take_turn).
+-- Per-session usage: 25 messages per session, at most one every 3 s (checked in tutor_take_turn).
 create table if not exists public.tutor_usage (
   session_id text primary key,
   count      int not null default 0,
@@ -43,8 +43,8 @@ alter table public.settings enable row level security;
 revoke all on public.settings from anon, authenticated;
 
 -- Atomic rate-limit check and count. Returns 'ok', 'too_fast' or 'limit'.
--- Only a successful turn is counted, so a too-fast retry doesn't use up the 40.
-create or replace function public.tutor_take_turn(p_session text, p_max int default 40, p_gap_ms int default 3000)
+-- Only a successful turn is counted, so a too-fast retry doesn't use up the 25.
+create or replace function public.tutor_take_turn(p_session text, p_max int default 25, p_gap_ms int default 3000)
 returns text
 language plpgsql
 security definer

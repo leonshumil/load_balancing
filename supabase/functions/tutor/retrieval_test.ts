@@ -20,6 +20,7 @@ Deno.test("chunk ids sort in paper order (2.6-p1 < 2.6.1-p1 < 2.10-p1, p2 < p10)
 const synthetic: Chunk[] = [
   chunk("1-p1", "ECMP hashes flows to paths. " + words(50)),
   chunk("1-p4", "Figure 1 design space tree. " + words(50), { figures: [1] }),
+  chunk("1-p5", "General link state routing is an N-party protocol. " + words(50)),
   chunk("2.1-p1", "Responsive. Transport independent. Robust to asymmetry. " + words(50)),
   chunk("2.2-p1", "Centralized schedulers are too slow. " + words(50)),
   chunk("2.3-p1", "MPTCP at the end host increases incast. " + words(50)),
@@ -37,7 +38,7 @@ Deno.test("BM25: 'reordering' ranks §2.6 first (synthetic)", () => {
 
 Deno.test("selectContext: every fork gets §2.1 and the Figure 1 chunk, then its own sections (CONGA §2.2-§2.6)", () => {
   const expected: Record<string, string[]> = {
-    F1: ["2.2-p1"], F2: ["2.3-p1"], F3: ["2.4-p1"], F4: ["1-p1", "2.5-p1"], F5: ["2.6-p1", "2.6.1-p1"],
+    F1: ["2.2-p1"], F2: ["2.3-p1"], F3: ["2.4-p1"], F4: ["1-p5", "2.5-p1"], F5: ["2.6-p1", "2.6.1-p1"],
   };
   for (const [fork, own] of Object.entries(expected)) {
     const ids = selectContext(synthetic, fork, "").chunks.map((c) => c.id);
@@ -50,22 +51,33 @@ Deno.test("selectContext: every fork gets §2.1 and the Figure 1 chunk, then its
   }
 });
 
-Deno.test("selectContext: BM25 adds chunks for the student's message after the fork's sections", () => {
-  const ids = selectContext(synthetic, "F1", "what about flowlet detection timeouts?").chunks.map((c) => c.id);
-  assert(ids.includes("3.4-p1"), ids.join(","));
-  assert(ids.indexOf("2.2-p1") < ids.indexOf("3.4-p1"));
+Deno.test("selectContext: on a fork turn BM25 adds at most one new chunk, kept apart from the fork's base", () => {
+  const ctx = selectContext(synthetic, "F1", "what about flowlet detection timeouts?");
+  assertEquals(ctx.extra.map((c) => c.id), ["3.4-p1"]);
+  assert(!ctx.base.some((c) => c.id === "3.4-p1"));
+  assertEquals(ctx.chunks.map((c) => c.id), [...ctx.base, ...ctx.extra].map((c) => c.id));
+  // a hit already in the base is not repeated, and doesn't use up the one slot
+  const again = selectContext(synthetic, "F1", "centralized schedulers flowlet detection");
+  assertEquals(again.extra.map((c) => c.id), ["3.4-p1"]);
 });
 
-Deno.test("selectContext: free question (no fork) is §2.1 + Figure 1 + BM25", () => {
-  const ids = selectContext(synthetic, null, "MPTCP incast").chunks.map((c) => c.id);
-  assertEquals(ids.slice(0, 2).sort(), ["1-p4", "2.1-p1"]);
-  assert(ids.includes("2.3-p1"));
+Deno.test("selectContext: the base for a fork doesn't depend on the message (cacheable prefix)", () => {
+  const a = selectContext(synthetic, "F5", "reordering").base.map((c) => c.id);
+  const b = selectContext(synthetic, "F5", "something else entirely about MPTCP").base.map((c) => c.id);
+  assertEquals(a, b);
 });
 
-Deno.test("selectContext: never more than ~2,500 words", () => {
+Deno.test("selectContext: free question (no fork) is §2.1 + Figure 1 + up to 3 BM25 hits", () => {
+  const ctx = selectContext(synthetic, null, "MPTCP incast flowlet reordering link state");
+  assertEquals(ctx.base.map((c) => c.id).sort(), ["1-p4", "2.1-p1"]);
+  assert(ctx.extra.length >= 1 && ctx.extra.length <= 3);
+  assert(ctx.extra.some((c) => c.id === "2.3-p1"));
+});
+
+Deno.test("selectContext: never more than MAX_WORDS (1,400) of paper", () => {
   const big = Array.from({ length: 30 }, (_, i) => chunk(`2.2-p${i + 1}`, "centralized " + words(199)));
   const ctx = selectContext([...synthetic, ...big], "F1", "centralized");
-  assert(ctx.words <= 2500, String(ctx.words));
+  assert(ctx.words <= 1400, String(ctx.words));
   assert(ctx.chunks.some((c) => c.id === "2.1-p1"));
 });
 
@@ -86,13 +98,18 @@ Deno.test({ name: "CONGA chunks: BM25 finds §2.6 for 'reordering'", ignore: !re
   assert(hits.some((h) => h.section.startsWith("2.6")), hits.map((h) => h.id).join(","));
 } });
 
-Deno.test({ name: "CONGA chunks: each fork's context holds its sections, §2.1 and Figure 1, within 2,500 words", ignore: !real, fn: () => {
+Deno.test({ name: "CONGA chunks: F4's extra chunk is §1's link-state paragraph", ignore: !real, fn: () => {
+  const c = real!.find((x) => x.id === FORKS.F4.extraChunks[0]);
+  assert(c && /link state/.test(c.text) && /leaf-to-leaf/.test(c.text), c?.text.slice(0, 80));
+} });
+
+Deno.test({ name: "CONGA chunks: each fork's context holds its sections, §2.1 and Figure 1, within 1,400 words", ignore: !real, fn: () => {
   for (const [id, f] of Object.entries(FORKS)) {
     const ctx = selectContext(real!, id, "");
     const secs = new Set(ctx.chunks.map((c) => c.section));
     assert(secs.has("2.1"), id);
     for (const s of f.sections) assert(secs.has(s), `${id} ${s}`);
     assert(ctx.chunks.some((c) => c.figures?.includes(1)), `${id} fig 1`);
-    assert(ctx.words <= 2500, `${id} ${ctx.words}`);
+    assert(ctx.words <= 1400, `${id} ${ctx.words}`);
   }
 } });

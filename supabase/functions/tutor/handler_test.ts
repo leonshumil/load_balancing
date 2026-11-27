@@ -69,11 +69,15 @@ Deno.test("happy path: validated JSON back, prompt + context sent, turn logged",
   assertEquals(await res.json(), { ...good, fallback: false });
   assertEquals(calls.length, 1);
   assertEquals(calls[0].system, SYSTEM_PROMPT);
+  // the fork and its excerpts come first (same for every student on F3: a cacheable prefix)
+  const ctxMsg = calls[0].messages[0];
+  assertEquals(ctxMsg.role, "system");
+  assertMatch(ctxMsg.content, /id: F3 \(§2\.4\)/);
+  assertMatch(ctxMsg.content, /<excerpt id="2\.4-p2"/);
+  assertMatch(ctxMsg.content, /<excerpt id="2\.1-p1"/);
+  assert(!ctxMsg.content.includes("<student_message>"));
   const last = calls[0].messages.at(-1)!;
   assertEquals(last.role, "user");
-  assertMatch(last.content, /id: F3 \(§2\.4\)/);
-  assertMatch(last.content, /<excerpt id="2\.4-p2"/);
-  assertMatch(last.content, /<excerpt id="2\.1-p1"/);
   assertMatch(last.content, /F1: picked distributed; used P1/);
   assertMatch(last.content, /global ‹because› P3/); // student text can't open tags
   assertEquals(store.logs.length, 1);
@@ -110,17 +114,18 @@ Deno.test("free question: fork_id null is accepted", async () => {
   assertEquals(res.status, 200);
   assertEquals(j.detected_pick, null);
   assertEquals(j.ready_to_reveal, false);
-  assertMatch(calls[0].messages.at(-1)!.content, /none \(free question\)/);
+  assertMatch(calls[0].messages[0].content, /none \(free question\)/);
 });
 
-Deno.test("history: only the last 10 turns are sent, earlier turns as plain text", async () => {
+Deno.test("history: only the last 6 turns, each cut to 600 characters", async () => {
   const { handler, calls } = setup();
-  const history = Array.from({ length: 14 }, (_, i) => ({ role: i % 2 ? "assistant" : "user", text: `turn ${i}` }));
+  const history = Array.from({ length: 14 }, (_, i) => ({ role: i % 2 ? "assistant" : "user", text: `turn ${i} ` + "y".repeat(i === 13 ? 900 : 5) }));
   await handler(post(body({ history })));
   const sent = calls[0].messages.map((m) => m.content).join("\n");
-  assert(!sent.includes("turn 3"));
-  assert(sent.includes("turn 4") && sent.includes("turn 13"));
-  assertEquals(calls[0].messages[0].role, "user");
+  assert(!sent.includes("turn 7 "));
+  assert(sent.includes("turn 8 ") && sent.includes("turn 13 "));
+  assert(!sent.includes("y".repeat(601)));
+  assertEquals(calls[0].messages[1].role, "user"); // after the context, the conversation starts with the student
 });
 
 Deno.test("invalid model output: retried once, then a safe fallback (logged)", async () => {
@@ -168,11 +173,11 @@ Deno.test("rate limit: one message every 3 s per session", async () => {
   assertEquals((await handler(post(b))).status, 200);
 });
 
-Deno.test("rate limit: 40 messages per session, then a friendly 'limit reached'", async () => {
+Deno.test("rate limit: 25 messages per session, then a friendly 'limit reached'", async () => {
   const clock = { t: 1_000_000 };
   const { handler, calls } = setup(undefined, { clock });
   const b = body();
-  for (let i = 0; i < 40; i++) {
+  for (let i = 0; i < 25; i++) {
     clock.t += 3000;
     assertEquals((await handler(post(b))).status, 200, `message ${i + 1}`);
   }
@@ -182,7 +187,7 @@ Deno.test("rate limit: 40 messages per session, then a friendly 'limit reached'"
   const j = await res.json();
   assertEquals(j.error, "limit");
   assertEquals(j.reply, MESSAGES.limit);
-  assertEquals(calls.length, 40);
+  assertEquals(calls.length, 25);
   // another session is not affected
   assertEquals((await handler(post(body()))).status, 200);
 });

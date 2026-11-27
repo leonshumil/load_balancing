@@ -4,7 +4,7 @@
 
 export type LLMRequest = {
   system: string;
-  messages: { role: "user" | "assistant"; content: string }[];
+  messages: { role: "system" | "user" | "assistant"; content: string }[];
   schema: Record<string, unknown>;
 };
 
