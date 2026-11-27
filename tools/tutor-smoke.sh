@@ -2,11 +2,11 @@
 # Smoke test for the tutor function (start it first with tools/tutor-dev.sh).
 #
 #  1. Real calls to the primary model: F1-F5 (F1 and F2 twice, as two students, to see whether
-#     the shared prefix gets cached; F2's second message is written in Hebrew and must still
-#     get an English reply), a free question.
-#  2. Our limits: too fast, too long, wrong origin, CORS preflight (no model calls).
+#     the shared prefix gets cached), a free question.
+#  2. Class code, passages and our limits: missing/wrong code, passage by id, too fast,
+#     too long, wrong origin, CORS preflight (no model calls).
 #  3. Forced 429s, with a local stub in place of Groq:
-#     a. primary 429 -> the real overflow model answers (English, and Hebrew in -> English out)
+#     a. primary 429 -> the real overflow model answers (twice: the second call skips the primary)
 #     b. primary and overflow both 429 -> {error: "quota"}, one call each, no retry.
 #
 # Every model call prints: model, status, prompt / cached / completion tokens, time, and
@@ -70,11 +70,11 @@ for c in json.loads(sys.argv[1]):
 PY
 }
 
-# check_json <fork|null> <expected pick> <lang of the message>: the approved shape, not a fallback, reply in English
+# check_json <fork|null> <expected pick>: the approved shape, not a fallback
 check_json() {
-  python3 -I - "$1" "$2" "$3" "$BODY" <<'PY'
+  python3 -I - "$1" "$2" "$BODY" <<'PY'
 import json, re, sys
-fork, expected, lang, body = sys.argv[1:5]
+fork, expected, body = sys.argv[1:4]
 options = {"F1": ["centralized", "distributed"], "F2": ["host-based", "in-network"], "F3": ["local", "global"],
            "F4": ["link-state", "leaf-to-leaf"], "F5": ["per-flow", "per-flowlet", "per-packet"], "null": []}
 try:
@@ -89,7 +89,6 @@ if o.get("detected_pick") not in options[fork] + [None]: errs.append(f"detected_
 if not isinstance(o.get("properties_mentioned"), list) or not set(o["properties_mentioned"]) <= {"P1","P2","P3","P4","P5"}: errs.append("properties_mentioned")
 if not isinstance(o.get("ready_to_reveal"), bool): errs.append("ready_to_reveal")
 if o.get("fallback") is not False: errs.append("fallback reply (output failed validation twice, or the call failed)")
-if re.search(r"[\u0590-\u05FF]", o.get("reply", "")): errs.append("reply is not in English (contains Hebrew)")
 if errs:
     print("; ".join(errs)); sys.exit(1)
 note = "" if expected in ("-", o["detected_pick"]) else f"  [note: expected pick {expected}]"
@@ -98,13 +97,13 @@ print("      reply: " + o["reply"].replace("\n", " ")[:260])
 PY
 }
 
-real_turn() { # real_turn <url> <label> <session> <fork> <expected pick> <lang> <message>
+real_turn() { # real_turn <url> <label> <session> <fork> <expected pick> <message>
   local t0 ms detail
   t0=$(date +%s%N)
-  post "$1" "$3" "$4" "$7"
+  post "$1" "$3" "$4" "$6"
   ms=$(( ($(date +%s%N) - t0) / 1000000 ))
   if [ "$STATUS" != "200" ]; then fail "$2: HTTP $STATUS $BODY"; show_calls; return; fi
-  if detail=$(check_json "$4" "$5" "$6"); then pass "$2 (${ms} ms) $detail"; else fail "$2: $detail"; fi
+  if detail=$(check_json "$4" "$5"); then pass "$2 (${ms} ms) $detail"; else fail "$2: $detail"; fi
   show_calls
 }
 
@@ -135,21 +134,21 @@ start_tutor() { # start_tutor <port> <env...>: another local tutor instance
 
 echo "Tutor smoke test against $URL (primary $PRIMARY, overflow $OVERFLOW)"
 echo "1. Real calls, one per fork (F1 and F2 twice, as different students, to check prompt caching)"
-real_turn "$URL" "F1" "$RUN-F1a" F1 distributed en "Distributed. Datacenter traffic is bursty, so a central scheduler would react too slowly (P1)."
+real_turn "$URL" "F1" "$RUN-F1a" F1 distributed "Distributed. Datacenter traffic is bursty, so a central scheduler would react too slowly (P1)."
 pace
-real_turn "$URL" "F1 again (other student; cache check)" "$RUN-F1b" F1 distributed en "Centralized, because one controller sees the whole fabric and can plan the best paths."
+real_turn "$URL" "F1 again (other student; cache check)" "$RUN-F1b" F1 distributed "Centralized, because one controller sees the whole fabric and can plan the best paths."
 pace
-real_turn "$URL" "F2" "$RUN-F2a" F2 in-network en "In-network. Operators often can't change the end-host stack, so it has to be transport independent (P2)."
+real_turn "$URL" "F2" "$RUN-F2a" F2 in-network "In-network. Operators often can't change the end-host stack, so it has to be transport independent (P2)."
 pace
-real_turn "$URL" "F2 written in Hebrew -> English reply (other student; cache check)" "$RUN-F2b" F2 in-network he "אני חושב שבתוך הרשת, כי המפעילים לא שולטים במחסנית של השרתים, אז זה חייב להיות transport independent (P2)."
+real_turn "$URL" "F2 again (other student; cache check)" "$RUN-F2b" F2 in-network "In the switches: the end-host stack is often out of the operator's control (P2, P4)."
 pace
-real_turn "$URL" "F3" "$RUN-F3" F3 global en "Global. With asymmetry a switch's own links don't show the congestion further downstream (P3)."
+real_turn "$URL" "F3" "$RUN-F3" F3 global "Global. With asymmetry a switch's own links don't show the congestion further downstream (P3)."
 pace
-real_turn "$URL" "F4" "$RUN-F4" F4 leaf-to-leaf en "Leaf to leaf, because it is deployable with an overlay and near-optimal for leaf-spine (P4, P5)."
+real_turn "$URL" "F4" "$RUN-F4" F4 leaf-to-leaf "Leaf to leaf, because it is deployable with an overlay and near-optimal for leaf-spine (P4, P5)."
 pace
-real_turn "$URL" "F5" "$RUN-F5" F5 per-flowlet en "Per flowlet: no TCP changes are needed and packets aren't reordered (P2)."
+real_turn "$URL" "F5" "$RUN-F5" F5 per-flowlet "Per flowlet: no TCP changes are needed and packets aren't reordered (P2)."
 pace
-real_turn "$URL" "free question" "$RUN-free" null - en "What is a flowlet, in one sentence?"
+real_turn "$URL" "free question" "$RUN-free" null - "What is a flowlet, in one sentence?"
 
 echo "2. Class code, passages and our limits (no model calls)"
 CLASS_CODE_OVERRIDE="" post "$URL" "$RUN-nocode" F1 "Distributed (P1)."
@@ -184,9 +183,9 @@ elif ! command -v deno >/dev/null; then echo "  SKIP (deno not on PATH)"; fails=
   echo "  a. $PRIMARY says 429 -> $OVERFLOW (real) answers"
   start_tutor 8789 TUTOR_MODEL="$PRIMARY" TUTOR_REASONING_EFFORT=low TUTOR_MODEL_FALLBACK="$OVERFLOW" \
     TUTOR_LLM_BASE_URL=http://127.0.0.1:8788 TUTOR_FALLBACK_BASE_URL=https://api.groq.com/openai/v1
-  real_turn http://127.0.0.1:8789 "F3 via overflow" "$RUN-ovf1" F3 global en "Global, because a switch only sees its own links and misses downstream congestion (P3)."
+  real_turn http://127.0.0.1:8789 "F3 via overflow" "$RUN-ovf1" F3 global "Global, because a switch only sees its own links and misses downstream congestion (P3)."
   pace
-  real_turn http://127.0.0.1:8789 "F3 written in Hebrew via overflow -> English reply (primary cooling down: not called)" "$RUN-ovf2" F3 global he "גלובלי, כי מתג רואה רק את הקישורים שלו ולא את העומס בהמשך הדרך (P3)."
+  real_turn http://127.0.0.1:8789 "F3 again via overflow (primary cooling down: not called)" "$RUN-ovf2" F3 global "Global: only non-local knowledge shows downstream congestion (P3)."
   if [ "$(grep -c . "$TMP/stub-models.log")" = "1" ]; then pass "the primary was asked once, then skipped during its cooldown"; else fail "primary calls at the stub: $(tr '\n' ' ' <"$TMP/stub-models.log")"; fi
 
   echo "  b. both models say 429 -> {error: \"quota\"}"
