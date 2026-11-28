@@ -6,7 +6,7 @@ import { FORKS } from "../path/model.js";
 import {
   MAX_TURNS, initialState, start, currentForkId, addStudent, applyReply, revealCurrent, advance,
   fallbackAnswer, goOffline, goLive, historyFor, requestBody, treeView, nodeQuestion,
-  recap, propertiesUsed, isDone, restore, submission, guidedPick,
+  recap, propertiesUsed, isDone, restore, submission, guidedPick, propertyStatus,
 } from "./model.js";
 
 const reply = (over = {}) => ({ reply: "Why?", cites: [], detected_pick: null, properties_mentioned: [], ready_to_reveal: false, fallback: false, ...over });
@@ -259,4 +259,15 @@ test("guidedPick: 'Per Flow' does not match inside 'Per Flowlet', and labels wit
   assert.equal(currentForkId(s3), "F3");
   assert.equal(guidedPick(addStudent(s3, "I'd pick Global, Congestion-Aware.")), "global");
   assert.equal(guidedPick(addStudent(s3, "I'd pick Local (Stateless or Congestion-Aware).")), "local");
+});
+
+// review 9: under the tree, only the state of each property: used, missed (a revealed fork relied on it
+// and the student never used it), or open
+test("propertyStatus: used anywhere, missed only for forks already revealed (CONGA Fig 1 answer key)", () => {
+  let s = goOffline(live(), "error");
+  assert.deepEqual(propertyStatus(s), { P1: "open", P2: "open", P3: "open", P4: "open", P5: "open" });
+  s = fallbackAnswer(s, "distributed", ["P1"]).state; // F1 relies on P1 + P5
+  assert.deepEqual(propertyStatus(s), { P1: "used", P2: "open", P3: "open", P4: "open", P5: "missed" });
+  s = fallbackAnswer(advance(s), "in-network", ["P5", "P2"]).state; // F2 relies on P2 + P4
+  assert.deepEqual(propertyStatus(s), { P1: "used", P2: "used", P3: "open", P4: "missed", P5: "used" });
 });

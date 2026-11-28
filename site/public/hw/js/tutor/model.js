@@ -239,6 +239,13 @@ export function propertiesUsed(state) {
   return [...new Set(FORK_IDS.flatMap((id) => state.forks[id].properties))].sort();
 }
 
+/** P1..P5 -> "used" (in any fork), "missed" (a revealed fork relied on it, never used), or "open". */
+export function propertyStatus(state) {
+  const used = new Set(propertiesUsed(state));
+  const relied = new Set(FORKS.filter((f) => state.forks[f.id].revealed).flatMap((f) => f.properties));
+  return Object.fromEntries(PROPERTIES.map((p) => [p.id, used.has(p.id) ? "used" : relied.has(p.id) ? "missed" : "open"]));
+}
+
 export function recap(state) {
   const rows = FORKS.map((f) => {
     const fs = state.forks[f.id];

@@ -230,8 +230,15 @@
 .fig1-node:focus-visible .fig1-label { text-decoration: underline; }
 
 .tree-strip-row { display: none; }
-.prop-chips { margin-top: 2px; flex-wrap: wrap; }
-.prop-chips .chip { min-width: 0; padding: 6px 10px; cursor: default; }
+/* under the tree: each property's state only (used = violet, missed = gold, open = muted) */
+.prop-statuses { list-style: none; margin: 2px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.prop-status { display: inline-flex; gap: 5px; align-items: baseline; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); font-size: 0.75rem; line-height: 1.4; }
+.prop-status b { font-weight: 700; }
+.prop-status.is-used, .prop-key.is-used { background: var(--violet-fill); border-color: var(--violet); color: var(--text); }
+.prop-status.is-missed, .prop-key.is-missed { border: 1px dashed var(--gold); color: var(--gold); }
+[data-theme="light"] .prop-status.is-missed, [data-theme="light"] .prop-key.is-missed { color: var(--text); }
+.prop-status-head { display: flex; align-items: center; gap: 6px; }
+.prop-key { padding: 0 7px; border-radius: 999px; border: 1px solid transparent; text-transform: none; letter-spacing: 0; font-weight: 600; }
 .tutor-tree > .label { margin: 12px 0 6px; }
 
 /* phone: Figure 1 folds into a strip of five forks; tap to expand */
@@ -242,7 +249,6 @@
   .tree-toggle { flex: 0 0 auto; padding: 0.55rem 0.8rem; font-size: 0.8rem; }
   .tutor-tree .tree-svg { display: none; margin-top: 10px; }
   .tutor-tree.is-open .tree-svg { display: block; }
-  .prop-chips { flex-wrap: nowrap; }
   .recap-table { font-size: 0.8rem; }
   .recap-table th, .recap-table td { padding: 6px 4px; }
   .recap-table .col-paper { display: none; }
