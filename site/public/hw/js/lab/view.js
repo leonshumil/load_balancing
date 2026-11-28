@@ -130,7 +130,8 @@ export function initLab({ root, progress }) {
     }
     const fig3 = s.scenario === "fig3a" || s.scenario === "fig3b"
       ? toggle([["fig3a", "(a)"], ["fig3b", "(b)", !s.fig3.committed]], s.scenario, (id) => set(L.setScenario(s, id))) : null;
-    fill(instr, h("p", {}, text), h("div", { class: "lab-instr-actions" }, fig3, reset));
+    // Fig 3: the (a)/(b) toggle sits right before the instruction it switches
+    fill(instr, fig3 ? h("div", { class: "lab-instr-lead" }, fig3, h("p", {}, text)) : h("p", {}, text), h("div", { class: "lab-instr-actions" }, reset));
   }
 
   // ---------- scheme switch + graph ----------

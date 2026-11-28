@@ -366,6 +366,8 @@ textarea.input { resize: vertical; width: 100%; }
 .lab-instr { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 40px; }
 .lab-instr p { margin: 0; max-width: 72ch; }
 .lab-instr-actions { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
+.lab-instr-lead { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.lab-instr-lead .lab-toggle { flex: 0 0 auto; }
 .lab-toggle { display: inline-flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--panel-raised); }
 .lab-toggle-btn { border: 0; background: none; color: var(--muted); font: 600 0.82rem/1 var(--font); padding: 8px 14px; border-radius: 999px; cursor: pointer; }
 .lab-toggle-btn[aria-pressed="true"] { background: var(--lavender); color: var(--lavender-ink); }
