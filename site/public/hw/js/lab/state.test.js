@@ -174,7 +174,7 @@ test("whyLine: one sentence per scheme, from the paper's argument (CONGA §2.4)"
   assert.match(whyLine(s, "fig2", "conga"), /66\.6/);
   assert.match(whyLine(setScenario(s, "fig3b"), "fig3b", "weighted"), /S0/);
   for (const sc of ["fig2", "fig3a", "fig3b"]) for (const k of ["ecmp", "localOnly", "conga", "weighted"]) assert.ok(whyLine(s, sc, k).length > 20, `${sc} ${k}`);
-  assert.match(whyLine(setScenario(s, "sandbox"), "sandbox", "ecmp"), /full|No link/);
+  assert.match(whyLine(setScenario(s, "sandbox"), "sandbox", "ecmp"), /full|No link/i);
 });
 
 // review 12: the shares move from the spine labels into the results card
@@ -194,4 +194,13 @@ test("pathSplitLine: three or more paths are listed by spine; one path says so",
   for (const k of ["ecmp", "localOnly", "conga"]) one = predict(one, "fig2", k, 90);
   one = setLinkCap(reveal(one, "fig2", "all"), "fig2", "L0-S1", 0);
   assert.equal(pathSplitLine(one, "fig2", "ecmp"), "One path (S0)");
+});
+
+// review 13: the Sandbox starts where the schemes disagree (Fig 2's fabric, S1→L2 weak, plus a 40G demand from L1)
+test("Sandbox default: ECMP 100, local only 80, CONGA 120 of 120 Gbps", () => {
+  const r = results(setScenario(initialState(), "sandbox"), "sandbox");
+  near(r.ecmp.total, 100, 0.5, "ECMP");
+  near(r.localOnly.total, 80, 0.5, "local only");
+  near(r.conga.total, 120, 0.5, "CONGA");
+  assert.equal(r.conga.demand, 120);
 });

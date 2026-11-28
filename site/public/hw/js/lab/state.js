@@ -14,10 +14,12 @@ const DEFAULT_SELECTED = { fig3b: 1 };
 const MIN_ANSWER = { fig2Why: 10, fig3Why: 10, whyNot: 20 };
 
 /** Sandbox starting point: three leaves, two spines, all links 80G; two leaves send to L2. */
+// Fig 2's fabric (L0's two 80G uplinks, a weak 40G link into the receiver) plus one extra demand from
+// L1, so the schemes disagree from the start: ECMP 100, local only 80, CONGA 120 of 120 Gbps.
 const SANDBOX = {
-  source: "Sandbox",
-  net: buildNet(["L0", "L1", "L2"], ["S0", "S1"], { "L0-S0": 80, "L0-S1": 80, "L1-S0": 80, "L1-S1": 80, "S0-L2": 80, "S1-L2": 80 }),
-  demands: [{ src: "L0", dst: "L2", gbps: 60 }, { src: "L1", dst: "L2", gbps: 60 }],
+  source: "Sandbox: Figure 2's fabric plus a demand from L1",
+  net: buildNet(["L0", "L1", "L2"], ["S0", "S1"], { "L0-S0": 80, "L0-S1": 80, "L1-S0": 80, "L1-S1": 80, "S0-L2": 80, "S1-L2": 40 }),
+  demands: [{ src: "L0", dst: "L2", gbps: 80 }, { src: "L1", dst: "L2", gbps: 40 }],
 };
 
 const clone = (x) => JSON.parse(JSON.stringify(x));
