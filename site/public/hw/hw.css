@@ -380,10 +380,10 @@ textarea.input { resize: vertical; width: 100%; }
 .lab-hint { margin: 0; color: var(--muted); font-size: 0.82rem; }
 
 .fabric { width: 100%; height: auto; display: block; font-family: var(--font); }
-.fabric-line { stroke: var(--muted); stroke-linecap: round; opacity: 0.55; transition: stroke-width 0.4s ease, stroke 0.4s ease, opacity 0.4s ease; }
+.fabric-line { fill: none; stroke: var(--muted); stroke-linecap: round; opacity: 0.55; transition: stroke-width 0.4s ease, stroke 0.4s ease, opacity 0.4s ease; }
 .fabric-link.is-full .fabric-line { stroke: var(--gold); opacity: 0.95; }
 .fabric-link.is-failed .fabric-line { stroke-dasharray: 5 6; opacity: 0.45; }
-.fabric-hit { stroke: transparent; stroke-width: 18; }
+.fabric-hit { fill: none; stroke: transparent; stroke-width: 18; }
 .fabric-link.is-editable { cursor: pointer; }
 .fabric-link.is-editable:hover .fabric-line, .fabric-link.is-selected .fabric-line { opacity: 1; stroke: var(--violet-soft); }
 .fabric-link.is-full.is-editable:hover .fabric-line { stroke: var(--gold); }
@@ -399,6 +399,8 @@ textarea.input { resize: vertical; width: 100%; }
 .fabric-path.is-solid { stroke-dasharray: none; stroke-width: 3; }
 .fabric-path.is-dashed { stroke: var(--violet-soft); stroke-dasharray: 7 6; stroke-width: 2.5; }
 .fabric-flow { fill: var(--violet-soft); }
+/* the overlays (violet paths, moving dots) never catch the clicks meant for the links under them */
+.fabric-paths, .fabric-dots { pointer-events: none; }
 .fabric-node-circle { fill: var(--panel); stroke: var(--muted); stroke-width: 2; }
 .fabric-node.is-spine .fabric-node-circle { stroke: var(--border); }
 .fabric-node.is-src .fabric-node-circle, .fabric-node.is-dst .fabric-node-circle { stroke: var(--violet); stroke-width: 3; }
