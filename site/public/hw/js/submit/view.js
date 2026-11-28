@@ -2,7 +2,7 @@
 // with a short summary of the homework. Name, email and the question draft are kept in the store.
 import * as store from "../../../shared/store.js";
 import { WEB3FORMS_KEY } from "../../../shared/config.js";
-import { validate, collect, buildSummary, payload, send, QUESTION_MAX } from "./model.js";
+import { validate, collect, buildSummary, payload, send, progressNote, QUESTION_MAX } from "./model.js";
 
 const KEY = "hw:submit";
 
@@ -51,15 +51,21 @@ export function initSubmit({ root }) {
   const status = h("p", { class: "sub-status", role: "status" });
   const again = h("button", { class: "btn btn-ghost", type: "button", hidden: true, onclick: () => { sentAt = null; save(); render(); name.focus(); } }, "Send again");
   const fields = h("fieldset", { class: "sub-fields" }, h("legend", { class: "visually-hidden" }, "Your details and question"), F.name.el, F.email.el, F.question.el, botcheck);
+  const soft = h("p", { class: "sub-soft" });
   const form = h("form", { class: "sub-form", novalidate: true },
     fields,
+    soft,
     h("div", { class: "sub-actions" }, sendBtn, again, status));
   root.replaceChildren(h("div", { class: "sub-grid" },
     form,
     h("div", { class: "sub-attach" }, h("p", { class: "label" }, "Attached to your email (read only)"), summaryBox,
       h("p", { class: "sub-note" }, "Leon gets one email with your question and this summary, and can reply to you directly."))));
 
-  const refreshSummary = () => { summaryBox.textContent = buildSummary(collect(store.get)); };
+  const refreshSummary = () => {
+    const d = collect(store.get);
+    summaryBox.textContent = buildSummary(d);
+    soft.textContent = sentAt ? "" : progressNote(d.done, d.total) ?? "";
+  };
   const refreshCount = () => {
     const n = question.value.trim().length;
     counter.textContent = `${n} / ${QUESTION_MAX}`;

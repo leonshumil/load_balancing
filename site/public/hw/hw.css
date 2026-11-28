@@ -506,3 +506,5 @@ textarea.input { resize: vertical; width: 100%; }
 .sub-summary { margin: 0; max-height: 300px; overflow: auto; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius-sm);
   background: var(--panel-raised); color: var(--muted); font: 0.8rem/1.5 var(--font-mono); white-space: pre-wrap; }
 .sub-note { margin: 0; color: var(--muted); font-size: 0.85rem; }
+.sub-soft { margin: 0; padding: 8px 12px; border-left: 3px solid var(--gold); border-radius: 4px; background: var(--panel-raised); color: var(--text); font-size: 0.88rem; }
+.sub-soft:empty { display: none; }

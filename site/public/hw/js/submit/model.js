@@ -114,6 +114,9 @@ export function buildSummary(d) {
   return text.length <= SUMMARY_MAX ? text : `${text.slice(0, SUMMARY_MAX - 1)}…`;
 }
 
+/** A soft note above Send while not every section is done (sending is never blocked). */
+export const progressNote = (done, total) => (done >= total ? null : `You've finished ${done} of ${total} sections. You can still send.`);
+
 /** The JSON body for Web3Forms. Reply-To = the student's email, so Leon can just hit Reply. */
 export function payload({ key, name, email, question, summary }) {
   const n = String(name ?? "").trim();

@@ -215,3 +215,12 @@ test("collect: the lab opened but untouched is 'Lab: not started'; Fig 2 not che
   lab = L.setAnswer(L.showEcmpWins(L.initialState(), "fig17"), "whyNot", "Stale feedback makes the leaves herd together.");
   assert.match(buildSummary(collect(get(lab))), /^Why not\? Stale feedback/m);
 });
+
+// review-2 P1-3: a soft note above Send, never a block
+import { progressNote } from "./model.js";
+test("progressNote: a soft note while fewer than all sections are done; none when all are", () => {
+  assert.equal(progressNote(2, 5), "You've finished 2 of 5 sections. You can still send.");
+  assert.equal(progressNote(0, 5), "You've finished 0 of 5 sections. You can still send.");
+  assert.equal(progressNote(1, 5), "You've finished 1 of 5 sections. You can still send.");
+  assert.equal(progressNote(5, 5), null);
+});
