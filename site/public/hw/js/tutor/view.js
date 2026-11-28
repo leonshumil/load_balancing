@@ -142,7 +142,8 @@ export function initTutor({ root, badge, progress }) {
 
   // ---------- guided (fallback) mode ----------
   function guided(forkId) {
-    if (fb.forkId !== forkId) fb = { forkId, pick: null, props: new Set() };
+    // carry over a branch the student already named in this fork (e.g. a quick reply before the tutor failed)
+    if (fb.forkId !== forkId) fb = { forkId, pick: M.guidedPick(state), props: new Set() };
     const f = forkById(forkId);
     const check = h("button", { class: "btn btn-primary", type: "button", onclick: () => {
       const r = M.fallbackAnswer(state, fb.pick, [...fb.props]);
