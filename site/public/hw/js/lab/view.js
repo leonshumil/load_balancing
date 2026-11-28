@@ -366,7 +366,15 @@ export function initLab({ root, progress }) {
     const t = h("textarea", { class: "input", rows: "2", maxlength: "1000", placeholder, "aria-label": question });
     t.value = s.answers[key] ?? "";
     t.addEventListener("input", () => { quiet(L.setAnswer(s, key, t.value)); renderStepper(); progress?.setDone("lab", L.isDone(s)); });
-    return h("label", { class: "lab-answer" }, h("span", { class: "label" }, question), t);
+    t.id = `lab-ask-${key}`;
+    return askCard(t.id, question, t);
+  }
+
+  /** A question the student answers in writing: a card that stands out (violet edge, gold badge). */
+  function askCard(id, question, ...body) {
+    return h("div", { class: "lab-ask" },
+      h("div", { class: "lab-ask-head" }, h("span", { class: "badge badge-gold" }, "Your answer"), h("label", { class: "lab-ask-q", for: id }, question)),
+      ...body);
   }
 
   function renderBelow() {
@@ -376,8 +384,9 @@ export function initLab({ root, progress }) {
       const t = h("textarea", { class: "input", rows: "4", maxlength: "1000", placeholder: "In two or three sentences…", "aria-label": "Where is CONGA's argument weakest?" });
       t.value = s.answers.whyNot ?? "";
       t.addEventListener("input", () => { quiet(L.setAnswer(s, "whyNot", t.value)); renderStepper(); progress?.setDone("lab", L.isDone(s)); });
-      return fill(below, h("div", { class: "lab-whynot" },
-        h("p", {}, "Some places to look:"),
+      t.id = "lab-ask-whyNot";
+      return fill(below, askCard(t.id, "Where is CONGA's argument weakest?",
+        h("p", { class: "lab-ask-hint" }, "Some places to look:"),
         h("div", { class: "lab-prompts" }, ...WHY_NOT_PROMPTS.map((p) => h("button", { class: "chip", type: "button", onclick: () => {
           t.value = `${t.value}${t.value && !t.value.endsWith("\n") ? "\n" : ""}${p}: `;
           quiet(L.setAnswer(s, "whyNot", t.value));
