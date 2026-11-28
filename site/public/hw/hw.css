@@ -374,6 +374,7 @@ textarea.input { resize: vertical; width: 100%; }
 .lab-seg-btn:hover:not(:disabled) { color: var(--text); }
 .lab-seg-btn[aria-pressed="true"] { background: var(--violet); color: var(--on-accent); }
 .lab-seg-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.lab-seg-pick { border: 1px solid var(--border); background: var(--bg); }
 .lab-graph-wrap { position: relative; }
 .lab-graph { background: var(--panel-raised); border-radius: var(--radius-md); padding: 6px; }
 .lab-hint { margin: 0; color: var(--muted); font-size: 0.82rem; }

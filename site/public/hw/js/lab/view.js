@@ -92,6 +92,12 @@ export function initLab({ root, progress }) {
   }
 
   // ---------- the instruction line ----------
+  /** A segmented control like the scheme switch (for a choice that is an answer, e.g. who wins). */
+  function segPick(items, current, onPick, label) {
+    return h("div", { class: "lab-seg lab-seg-pick", role: "group", "aria-label": label }, ...items.map(([id, text]) =>
+      h("button", { type: "button", class: "lab-seg-btn", "aria-pressed": String(id === current), onclick: () => onPick(id) }, text)));
+  }
+
   function toggle(items, current, onPick) {
     return h("div", { class: "lab-toggle", role: "group" }, ...items.map(([id, label, disabled]) =>
       h("button", { type: "button", class: "lab-toggle-btn", "aria-pressed": String(id === current), disabled: !!disabled, onclick: () => onPick(id) }, label)));
@@ -119,7 +125,7 @@ export function initLab({ root, progress }) {
         ? "§6.1, Figure 17: five leaves in a ring, each pair of neighbours sends 60 Gbps over 40G links. CONGA starts in the flow the paper draws."
         : "Two leaves send 40 Gbps each to L2 over two equal spines; CONGA reacts to congestion data that is 3 rounds old.";
       fill(instr, h("p", {}, s.ecmpWinsView === "delay" ? h("span", { class: "badge badge-violet" }, "beyond the paper's model") : null, s.ecmpWinsView === "delay" ? " " : null, t),
-        h("div", { class: "lab-instr-actions" }, toggle([["fig17", "Figure 17: stuck"], ["delay", "Stale feedback", !s.revealed["ecmpWins:fig17"]?.all]], s.ecmpWinsView, (id) => set(L.showEcmpWins(s, id))), reset));
+        h("div", { class: "lab-instr-actions" }, toggle([["fig17", "Figure 17 (paper)"], ["delay", "Stale feedback (beyond the paper)", !s.revealed["ecmpWins:fig17"]?.all]], s.ecmpWinsView, (id) => set(L.showEcmpWins(s, id))), reset));
       return;
     }
     const fig3 = s.scenario === "fig3a" || s.scenario === "fig3b"
@@ -271,7 +277,7 @@ export function initLab({ root, progress }) {
       const key = `ecmpWins:${s.ecmpWinsView}`;
       const w = s.predictions[key]?.winner;
       return h("div", { class: "lab-pred" }, h("p", { class: "label" }, "Who delivers more here?"),
-        toggle([["ecmp", "ECMP"], ["conga", "CONGA"]], w, (id) => set(L.predict(s, key, "winner", id))),
+        segPick([["ecmp", "ECMP"], ["conga", "CONGA"]], w, (id) => set(L.predict(s, key, "winner", id)), "Your prediction: who delivers more"),
         h("button", { class: "btn btn-primary", type: "button", disabled: !w, onclick: () => set(L.setScheme(L.reveal(s, key, "all"), "conga")) }, "Check my prediction"));
     }
     if (s.scenario === "ecmpWins" && s.ecmpWinsView) {
