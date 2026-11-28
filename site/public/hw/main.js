@@ -6,6 +6,7 @@ import { scrollSpy } from "../shared/ui.js";
 import { initTutor } from "./js/tutor/view.js";
 import { initRead, initWatch } from "./js/sections/view.js";
 import { initLab } from "./js/lab/view.js";
+import { initSubmit } from "./js/submit/view.js";
 
 export const SECTIONS = ["read", "watch", "tutor", "lab", "questions"];
 
@@ -21,4 +22,5 @@ export function initPage() {
   initWatch({ section: document.getElementById("watch"), progress });
   initTutor({ root: document.querySelector("[data-tutor]"), badge: document.querySelector("[data-tutor-badge]"), progress });
   initLab({ root: document.querySelector("[data-lab]"), progress });
+  initSubmit({ root: document.querySelector("[data-submit]") });
 }
