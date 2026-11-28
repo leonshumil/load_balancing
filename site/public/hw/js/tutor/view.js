@@ -150,7 +150,7 @@ export function initTutor({ root, badge, progress }) {
   }
 
   // ---------- guided (fallback) mode ----------
-  /** New fork: fresh form; carry over a branch the student already named (e.g. a quick reply before the tutor failed). */
+  /** New fork: fresh form; carry over a quick reply the student used on this fork before the tutor failed. */
   function syncGuided(forkId) {
     if (fb.forkId !== forkId) fb = { forkId, pick: M.guidedPick(state), props: new Set() };
   }
@@ -236,7 +236,7 @@ export function initTutor({ root, badge, progress }) {
     });
     const form = h("form", { class: "chat-form", onsubmit: (e) => { e.preventDefault(); const t = input.value.trim(); if (t && !busy) send(t, input); } }, input, sendBtn);
     const quick = cur ? h("div", { class: "chips quick-replies", role: "group", "aria-label": "Quick replies" },
-      ...forkById(cur).options.map((o) => quickBtn(`I'd pick ${o.label}`, () => send(`I'd pick ${o.label}.`))),
+      ...forkById(cur).options.map((o) => quickBtn(`I'd pick ${o.label}`, () => send(M.quickReplyText(o.label)))),
       quickBtn("Why?", () => send("Why?")),
       quickBtn("Show the passage", () => showForkPassage(cur), true),
       quickBtn("Show me", () => { setState(M.revealCurrent(state, "button")); scheduleAdvance(); })) : null;

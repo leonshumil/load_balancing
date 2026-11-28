@@ -227,20 +227,20 @@ test("submission: what Submit (step 07) sends: picks, properties, turns per fork
   assert.ok(!("messages" in sub));
 });
 
-// review 4: a quick reply ("I'd pick Distributed.") before the tutor fails carries over to guided mode
-test("guidedPick: the branch the student already named in this fork, for guided mode to preselect", () => {
+// review 4 + review-2 P1-5: only a quick reply ("I'd pick X.") on this fork carries over to guided mode;
+// free text and the tutor's detected pick don't (they preselected "Per Flow" on F5 in a live walk)
+test("guidedPick: the branch from a quick reply on this fork, and nothing else", () => {
   const fail = (s) => goOffline(s, "error");
   assert.equal(guidedPick(fail(addStudent(live(), "I'd pick Distributed."))), "distributed", "quick reply");
-  assert.equal(guidedPick(fail(addStudent(live(), "centralized, because one view sees everything"))), "centralized", "free text, any case");
+  assert.equal(guidedPick(fail(addStudent(live(), "centralized, because one view sees everything"))), null, "free text: no guess");
   assert.equal(guidedPick(fail(live())), null, "nothing said yet");
-  assert.equal(guidedPick(fail(addStudent(live(), "Centralized or distributed? Not sure."))), null, "both named: no guess");
   assert.equal(guidedPick(fail(addStudent(live(), "Why?"))), null);
-  // the latest message that names one branch wins
-  let s = addStudent(addStudent(live(), "I'd pick Centralized."), "Actually, I'd pick Distributed.");
-  assert.equal(guidedPick(fail(s)), "distributed");
-  // a pick the tutor already detected wins over text
+  // the latest quick reply wins; later free text doesn't change it
+  let s = addStudent(addStudent(live(), "I'd pick Centralized."), "I'd pick Distributed.");
+  assert.equal(guidedPick(fail(addStudent(s, "hmm, maybe centralized after all"))), "distributed");
+  // a pick the tutor detected from free text is not a quick reply
   s = applyReply(addStudent(live(), "the second one"), reply({ detected_pick: "centralized" })).state;
-  assert.equal(guidedPick(fail(s)), "centralized");
+  assert.equal(guidedPick(fail(s)), null);
   // only this fork's messages count
   const f2 = advance(revealCurrent(addStudent(live(), "I'd pick Distributed."), "button"));
   assert.equal(currentForkId(f2), "F2");
@@ -248,15 +248,16 @@ test("guidedPick: the branch the student already named in this fork, for guided 
   assert.equal(guidedPick(fail(addStudent(f2, "I'd pick In-Network."))), "in-network");
 });
 
-test("guidedPick: 'Per Flow' does not match inside 'Per Flowlet', and labels with commas match by their head", () => {
+test("guidedPick on F5: 'Per Flow' only from its own quick reply, never from text that mentions it", () => {
   let s = live();
   for (let i = 0; i < 4; i++) s = advance(revealCurrent(addStudent(s, "x"), "button"));
   assert.equal(currentForkId(s), "F5");
   assert.equal(guidedPick(addStudent(s, "I'd pick Per Flowlet (CONGA).")), "per-flowlet");
-  assert.equal(guidedPick(addStudent(s, "per flow is enough")), "per-flow");
+  assert.equal(guidedPick(addStudent(s, "I'd pick Per Flow.")), "per-flow");
+  assert.equal(guidedPick(addStudent(s, "per flow is enough")), null);
+  assert.equal(guidedPick(addStudent(s, "flowlets, not per flow, because of P2")), null);
   let s3 = live();
   for (let i = 0; i < 2; i++) s3 = advance(revealCurrent(addStudent(s3, "x"), "button"));
-  assert.equal(currentForkId(s3), "F3");
   assert.equal(guidedPick(addStudent(s3, "I'd pick Global, Congestion-Aware.")), "global");
   assert.equal(guidedPick(addStudent(s3, "I'd pick Local (Stateless or Congestion-Aware).")), "local");
 });
