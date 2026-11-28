@@ -86,8 +86,12 @@ export function initLab({ root, progress }) {
     fill(stepper, ...STEPS.map((x) => {
       const cur = stepOf(s.scenario) === x.id;
       const go = () => { closePop(); set(L.setScenario(s, x.id === "fig3" ? (s.fig3.committed ? "fig3b" : "fig3a") : x.id)); };
-      return h("li", {}, h("button", { class: `lab-step${cur ? " is-current" : ""}${x.done && st[x.done] ? " is-done" : ""}`, type: "button", "aria-current": cur ? "step" : null, onclick: go },
-        x.done && st[x.done] ? h("span", { class: "lab-step-tick", "aria-hidden": "true" }, "✓") : null, x.label));
+      // every guided step shows its state: a green ✓ when done, an empty ring until then; the Sandbox is optional
+      const done = x.done ? !!st[x.done] : null;
+      return h("li", {}, h("button", { class: `lab-step${cur ? " is-current" : ""}${done ? " is-done" : ""}`, type: "button", "aria-current": cur ? "step" : null, onclick: go,
+        "aria-label": `${x.label}${done === null ? " (optional)" : done ? ", done" : ", not done yet"}` },
+        done === null ? null : h("span", { class: `lab-step-tick${done ? "" : " is-open"}`, "aria-hidden": "true" }, done ? "✓" : ""),
+        x.label, done === null ? h("span", { class: "lab-step-opt" }, "optional") : null));
     }));
   }
 

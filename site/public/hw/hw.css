@@ -358,8 +358,10 @@ textarea.input { resize: vertical; width: 100%; }
 .lab-step { display: inline-flex; align-items: center; gap: 6px; border: 0; background: none; color: var(--muted); font: 600 0.86rem/1 var(--font); padding: 9px 16px; border-radius: 999px; cursor: pointer; }
 .lab-step:hover { color: var(--text); }
 .lab-step.is-current { background: var(--lavender); color: var(--lavender-ink); }
-.lab-step-tick { color: var(--ok); font-weight: 700; }
-.lab-step.is-current .lab-step-tick { color: var(--lavender-ink); }
+.lab-step-tick { display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; background: var(--ok); color: var(--bg); font: 700 0.66rem/1 var(--font); }
+.lab-step-tick.is-open { background: none; border: 1.5px solid var(--muted); box-sizing: border-box; }
+.lab-step.is-current .lab-step-tick.is-open { border-color: var(--lavender-ink); }
+.lab-step-opt { font-weight: 400; font-size: 0.72rem; opacity: 0.75; }
 .lab-instr { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 40px; }
 .lab-instr p { margin: 0; max-width: 72ch; }
 .lab-instr-actions { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
