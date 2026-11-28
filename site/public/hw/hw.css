@@ -187,6 +187,14 @@
 
 .tutor-panes { display: grid; gap: 20px; margin-top: 8px; }
 @media (min-width: 760px) { .tutor-panes { grid-template-columns: minmax(0, 40fr) minmax(0, 60fr); align-items: start; } }
+/* desktop: the chat pane is exactly as tall as the tree pane (contain: size keeps it from setting the
+   row height); messages scroll inside it and the input stays pinned at its foot */
+@media (min-width: 1200px) {
+  .tutor-panes { align-items: stretch; }
+  .tutor-chat { contain: size; min-height: 520px; }
+  .tutor-chat .chat-log { flex: 1 1 auto; min-height: 0; max-height: none; }
+  .tutor-chat .tutor-controls { flex: 0 0 auto; }
+}
 
 /* ---- tree pane ---- */
 .tutor-tree { min-width: 0; }
