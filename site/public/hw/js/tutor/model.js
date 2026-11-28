@@ -67,6 +67,31 @@ export function start(state, mode, offline = null) {
 }
 
 export const goOffline = (state, reason) => ({ ...clone(state), mode: "fallback", offline: reason });
+
+// A branch is "named" by the head of its label ("Global" for "Global, Congestion-Aware", "Local" for
+// "Local (Stateless or ...)"), as whole words, any case; "-" and spaces are interchangeable.
+const branchPattern = (label) => {
+  const head = label.split(/[,(]/)[0].trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/[-\s]+/g, "[-\\s]+");
+  return new RegExp(`(^|[^\\w])${head}(?![\\w])`, "i");
+};
+
+/**
+ * The branch the student already chose in the current fork, so guided mode can preselect it after
+ * the tutor fails (e.g. a quick reply "I'd pick Distributed."). The tutor's detected pick wins;
+ * otherwise the latest of this fork's messages that names exactly one branch. null = no guess.
+ */
+export function guidedPick(state) {
+  const id = currentForkId(state);
+  if (!id) return null;
+  const options = forkById(id).options;
+  if (options.some((o) => o.id === state.forks[id].pick)) return state.forks[id].pick;
+  const mine = state.messages.filter((m) => m.role === "student" && m.fork === id);
+  for (const m of mine.reverse()) {
+    const named = options.filter((o) => branchPattern(o.label).test(m.text));
+    if (named.length === 1) return named[0].id;
+  }
+  return null;
+}
 export const goLive = (state) => ({ ...clone(state), mode: "live", offline: null });
 
 export function addStudent(state, text) {
@@ -212,6 +237,13 @@ export function nodeQuestion(state, nodeId) {
 
 export function propertiesUsed(state) {
   return [...new Set(FORK_IDS.flatMap((id) => state.forks[id].properties))].sort();
+}
+
+/** P1..P5 -> "used" (in any fork), "missed" (a revealed fork relied on it, never used), or "open". */
+export function propertyStatus(state) {
+  const used = new Set(propertiesUsed(state));
+  const relied = new Set(FORKS.filter((f) => state.forks[f.id].revealed).flatMap((f) => f.properties));
+  return Object.fromEntries(PROPERTIES.map((p) => [p.id, used.has(p.id) ? "used" : relied.has(p.id) ? "missed" : "open"]));
 }
 
 export function recap(state) {

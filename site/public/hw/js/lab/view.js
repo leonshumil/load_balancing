@@ -92,6 +92,12 @@ export function initLab({ root, progress }) {
   }
 
   // ---------- the instruction line ----------
+  /** A segmented control like the scheme switch (for a choice that is an answer, e.g. who wins). */
+  function segPick(items, current, onPick, label) {
+    return h("div", { class: "lab-seg lab-seg-pick", role: "group", "aria-label": label }, ...items.map(([id, text]) =>
+      h("button", { type: "button", class: "lab-seg-btn", "aria-pressed": String(id === current), onclick: () => onPick(id) }, text)));
+  }
+
   function toggle(items, current, onPick) {
     return h("div", { class: "lab-toggle", role: "group" }, ...items.map(([id, label, disabled]) =>
       h("button", { type: "button", class: "lab-toggle-btn", "aria-pressed": String(id === current), disabled: !!disabled, onclick: () => onPick(id) }, label)));
@@ -119,12 +125,13 @@ export function initLab({ root, progress }) {
         ? "§6.1, Figure 17: five leaves in a ring, each pair of neighbours sends 60 Gbps over 40G links. CONGA starts in the flow the paper draws."
         : "Two leaves send 40 Gbps each to L2 over two equal spines; CONGA reacts to congestion data that is 3 rounds old.";
       fill(instr, h("p", {}, s.ecmpWinsView === "delay" ? h("span", { class: "badge badge-violet" }, "beyond the paper's model") : null, s.ecmpWinsView === "delay" ? " " : null, t),
-        h("div", { class: "lab-instr-actions" }, toggle([["fig17", "Figure 17: stuck"], ["delay", "Stale feedback", !s.revealed["ecmpWins:fig17"]?.all]], s.ecmpWinsView, (id) => set(L.showEcmpWins(s, id))), reset));
+        h("div", { class: "lab-instr-actions" }, toggle([["fig17", "Figure 17 (paper)"], ["delay", "Stale feedback (beyond the paper)", !s.revealed["ecmpWins:fig17"]?.all]], s.ecmpWinsView, (id) => set(L.showEcmpWins(s, id))), reset));
       return;
     }
     const fig3 = s.scenario === "fig3a" || s.scenario === "fig3b"
       ? toggle([["fig3a", "(a)"], ["fig3b", "(b)", !s.fig3.committed]], s.scenario, (id) => set(L.setScenario(s, id))) : null;
-    fill(instr, h("p", {}, text), h("div", { class: "lab-instr-actions" }, fig3, reset));
+    // Fig 3: the (a)/(b) toggle sits right before the instruction it switches
+    fill(instr, fig3 ? h("div", { class: "lab-instr-lead" }, fig3, h("p", {}, text)) : h("p", {}, text), h("div", { class: "lab-instr-actions" }, reset));
   }
 
   // ---------- scheme switch + graph ----------
@@ -140,15 +147,21 @@ export function initLab({ root, progress }) {
     const vis = L.visibleSchemes(s);
     const { net, demands, base } = L.effective(s);
     const R = L.results(s);
+    // Fig 17: fade everything but the selected demand's paths; solid = CONGA's Nash flow, dashed = the
+    // better flow (the other paths ECMP also uses), as the paper draws it
+    const fig17 = s.scenario === "ecmpWins" && s.ecmpWinsView === "fig17";
+    const used = (k) => Object.keys(R[k].splits[s.selected] ?? {}).filter((sp) => R[k].splits[s.selected][sp] > 1e-6);
+    const focus = fig17 ? { solid: used("conga"), dashed: used("ecmp").filter((sp) => !used("conga").includes(sp)) } : null;
     fabric.update({
       net, baseNet: base.net, demands, selected: s.selected,
       result: vis.has(s.scheme) ? R[s.scheme].result : null,
       editable: L.canEdit(s), selectedLink: popLink, motion: !reduceMotion(),
-      canSwitch: demands.length > 1,
+      canSwitch: demands.length > 1, focus,
     });
     const d = demands[s.selected];
     graphHint.textContent = [
-      d ? `Violet: the paths of ${d.src}→${d.dst}${demands.length > 1 ? " (click a sender to show another demand)" : ""}.` : "",
+      d && fig17 ? `${d.src}→${d.dst} only (click a sender to show another demand). Solid: CONGA's Nash flow, via ${focus.solid.join(", ")}. Dashed: the better flow ECMP also uses, via ${focus.dashed.join(", ")}. Every other link is faded.` : "",
+      d && !fig17 ? `Violet: the paths of ${d.src}→${d.dst}${demands.length > 1 ? " (click a sender to show another demand)" : ""}.` : "",
       L.canEdit(s) ? "Click a link to change its capacity." : "",
     ].filter(Boolean).join(" ");
   }
@@ -194,11 +207,13 @@ export function initLab({ root, progress }) {
     if (!vis.has(k)) { fill(card, split, pred ?? h("p", { class: "lab-card-hidden" }, "Lock your split to see the other schemes.")); return; }
     const r = R[k];
     const paper = R.paper[k];
+    const d = L.effective(s).demands[s.selected];
     fill(card,
       h("p", { class: "label" }, `${k === "weighted" ? "Weighted (WCMP)" : L.SCHEME_LABEL[k]} delivers`),
       h("div", { class: "lab-big" }, h("span", { class: "lab-big-num" }, fmt(r.total)), h("span", { class: "lab-big-of" }, ` / ${fmt(r.demand)} Gbps`),
         paper != null ? h("span", { class: "badge badge-gold" }, `${paper} · paper`) : null),
       h("p", { class: "lab-why" }, L.whyLine(s, s.scenario, k)),
+      d ? h("p", { class: "lab-paths" }, `${d.src}→${d.dst}: ${L.pathSplitLine(s, s.scenario, k)}`) : null,
       h("p", { class: "lab-util" }, `Busiest link ${pct(r.maxUtil)}`, k === "conga" ? " · what CONGA minimizes" : "", r.swing ? ` · swings ${fmt(r.swing[0])}–${fmt(r.swing[1])}` : ""),
       split,
       bars(R, vis),
@@ -234,29 +249,16 @@ export function initLab({ root, progress }) {
   }
 
   /** Predictions: compact inputs and one check button; null when there is nothing to predict. */
+  /** Compact prediction inputs: placeholder "e.g. 75", a normal primary Check button, and an inline
+      note (plus a marked input) for every box left empty when it is pressed. */
   function predictionBlock() {
     if (s.scenario === "fig2" && !L.canEdit(s, "fig2")) {
-      const p = s.predictions.fig2 ?? {};
-      const btn = h("button", { class: "btn btn-primary", type: "button", disabled: !["ecmp", "localOnly", "conga"].every((k) => Number.isFinite(p[k])), onclick: () => set(L.reveal(s, "fig2", "all")) }, "Check my predictions");
-      const row = (k) => {
-        const i = h("input", { class: "input lab-num", type: "number", min: "0", max: "400", step: "1", placeholder: "Gbps", "aria-label": `Your prediction for ${L.SCHEME_LABEL[k]} in Gbps` });
-        if (Number.isFinite(p[k])) i.value = String(p[k]);
-        i.addEventListener("input", () => {
-          quiet(L.predict(s, "fig2", k, i.value === "" ? null : Number(i.value)));
-          const q = s.predictions.fig2 ?? {};
-          btn.disabled = !["ecmp", "localOnly", "conga"].every((x) => Number.isFinite(q[x]));
-        });
-        return h("label", { class: "lab-pred-row" }, h("span", {}, L.SCHEME_LABEL[k]), i, h("span", { class: "lab-pred-unit" }, "Gbps"));
-      };
-      return h("div", { class: "lab-pred" }, h("p", { class: "label" }, "Your predictions"), row("ecmp"), row("localOnly"), row("conga"), btn);
+      return numberPreds("fig2", ["ecmp", "localOnly", "conga"].map((k) => [k, L.SCHEME_LABEL[k], `Your prediction for ${L.SCHEME_LABEL[k]} in Gbps`]),
+        "Your predictions", "Check my predictions");
     }
     if (s.scenario === "fig3b" && s.fig3.committed && !s.revealed.fig3b?.all) {
-      const p = s.predictions.fig3b?.weighted;
-      const btn = h("button", { class: "btn btn-primary", type: "button", disabled: !Number.isFinite(p), onclick: () => set(L.reveal(s, "fig3b", "all")) }, "Check my prediction");
-      const i = h("input", { class: "input lab-num", type: "number", min: "0", max: "400", step: "1", placeholder: "Gbps", "aria-label": "Your prediction: what your split delivers in (b), in Gbps" });
-      if (Number.isFinite(p)) i.value = String(p);
-      i.addEventListener("input", () => { quiet(L.predict(s, "fig3b", "weighted", i.value === "" ? null : Number(i.value))); btn.disabled = !Number.isFinite(s.predictions.fig3b?.weighted); });
-      return h("div", { class: "lab-pred" }, h("p", { class: "label" }, "Your prediction"), h("label", { class: "lab-pred-row" }, h("span", {}, "Your split in (b)"), i, h("span", { class: "lab-pred-unit" }, "Gbps")), btn);
+      return numberPreds("fig3b", [["weighted", "Your split in (b)", "Your prediction: what your split delivers in (b), in Gbps"]],
+        "Your prediction", "Check my prediction");
     }
     if (s.scenario === "fig3a" && !s.fig3.committed) {
       return h("button", { class: "btn btn-primary", type: "button", onclick: () => set(L.setScenario(L.commitWeights(s), "fig3b")) }, "Lock this split and go to (b)");
@@ -264,9 +266,13 @@ export function initLab({ root, progress }) {
     if (s.scenario === "ecmpWins" && s.ecmpWinsView && !s.revealed[`ecmpWins:${s.ecmpWinsView}`]?.all) {
       const key = `ecmpWins:${s.ecmpWinsView}`;
       const w = s.predictions[key]?.winner;
+      const note = h("p", { class: "lab-pred-note", role: "alert" });
       return h("div", { class: "lab-pred" }, h("p", { class: "label" }, "Who delivers more here?"),
-        toggle([["ecmp", "ECMP"], ["conga", "CONGA"]], w, (id) => set(L.predict(s, key, "winner", id))),
-        h("button", { class: "btn btn-primary", type: "button", disabled: !w, onclick: () => set(L.setScheme(L.reveal(s, key, "all"), "conga")) }, "Check my prediction"));
+        segPick([["ecmp", "ECMP"], ["conga", "CONGA"]], w, (id) => set(L.predict(s, key, "winner", id)), "Your prediction: who delivers more"),
+        h("button", { class: "btn btn-primary", type: "button", onclick: () => {
+          if (!s.predictions[key]?.winner) { note.textContent = "Pick ECMP or CONGA first."; return; }
+          set(L.setScheme(L.reveal(s, key, "all"), "conga"));
+        } }, "Check my prediction"), note);
     }
     if (s.scenario === "ecmpWins" && s.ecmpWinsView) {
       const key = `ecmpWins:${s.ecmpWinsView}`;
@@ -276,6 +282,37 @@ export function initLab({ root, progress }) {
         s.ecmpWinsView === "fig17" ? ` CONGA only lands here if it starts in this state; from ECMP it reaches ${fmt(R.congaFromEcmp)} Gbps too.` : ` With fresh data CONGA delivers ${fmt(R.congaFresh)} Gbps here, like ECMP.`);
     }
     return null;
+  }
+
+  function numberPreds(scenario, rows, title, label) {
+    const note = h("p", { class: "lab-pred-note", role: "alert" });
+    const inputs = rows.map(([k, name, aria]) => {
+      const i = h("input", { class: "input lab-num", type: "number", min: "0", max: "400", step: "1", placeholder: "e.g. 75", "aria-label": aria });
+      const v = s.predictions[scenario]?.[k];
+      if (Number.isFinite(v)) i.value = String(v);
+      i.addEventListener("input", () => {
+        quiet(L.predict(s, scenario, k, i.value === "" ? null : Number(i.value)));
+        if (i.value !== "") { i.classList.remove("is-missing"); i.removeAttribute("aria-invalid"); }
+      });
+      return [k, name, i];
+    });
+    const btn = h("button", { class: "btn btn-primary", type: "button", onclick: () => {
+      const missing = inputs.filter(([k]) => !Number.isFinite(s.predictions[scenario]?.[k]));
+      for (const [k, , i] of inputs) {
+        const miss = missing.some(([m]) => m === k);
+        i.classList.toggle("is-missing", miss);
+        if (miss) i.setAttribute("aria-invalid", "true"); else i.removeAttribute("aria-invalid");
+      }
+      if (missing.length) {
+        note.textContent = rows.length === 1 ? "Enter a number first (your best guess is fine)." : `Enter a number for ${missing.map(([, name]) => name).join(", ")} (your best guess is fine).`;
+        missing[0][2].focus();
+        return;
+      }
+      set(L.reveal(s, scenario, "all"));
+    } }, label);
+    return h("div", { class: "lab-pred" }, h("p", { class: "label" }, title),
+      ...inputs.map(([, name, i]) => h("label", { class: "lab-pred-row" }, h("span", {}, name), i, h("span", { class: "lab-pred-unit" }, "Gbps"))),
+      btn, note);
   }
 
   /** Weighted mode: one split slider for two paths (more sliders for more paths). */

@@ -52,6 +52,10 @@
           <li><a class="rail-btn" href="#submit" data-section="submit" title="Submit" aria-label="Submit"><svg class="icon"><use href="#i-submit"/></svg></a></li>
         </ul>
         <div class="rail-spacer"></div>
+        <div class="rail-stats" title="Sections done · time spent">
+          <span class="rail-count" data-progress-count aria-label="Sections done">0/5</span>
+          <span class="rail-time" data-time-spent aria-label="Time spent">0 min</span>
+        </div>
         <button class="rail-btn theme-toggle" type="button" data-icon aria-label="Switch theme">
           <svg class="icon icon-sun"><use href="#i-sun"/></svg>
           <svg class="icon icon-moon"><use href="#i-moon"/></svg>
@@ -73,46 +77,27 @@
       <p>
         Work through the five sections in order. Your answers are saved in this browser as you go,
         and one Submit at the end sends everything for the class discussion.
-        About 60 minutes in total, on a computer.
+        About 55 minutes in total, on a computer.
       </p>
       <nav class="contents" aria-label="Contents">
         <ol class="chips">
-          <li><a class="chip" href="#read" data-progress-for="read"><span>1 · Read</span><span class="chip-sub">12 min</span></a></li>
+          <li><a class="chip" href="#read" data-progress-for="read"><span>1 · Read</span><span class="chip-sub">7 min</span></a></li>
           <li><a class="chip" href="#watch" data-progress-for="watch"><span>2 · Watch</span><span class="chip-sub">5 min</span></a></li>
           <li><a class="chip" href="#tutor" data-progress-for="tutor"><span>3 · Path to CONGA</span><span class="chip-sub">20 min</span></a></li>
           <li><a class="chip" href="#lab" data-progress-for="lab"><span>4 · Lab</span><span class="chip-sub">15 min</span></a></li>
           <li><a class="chip" href="#questions" data-progress-for="questions"><span>5 · Questions</span><span class="chip-sub">8 min</span></a></li>
-          <li><a class="chip" href="#submit"><span>Submit</span><span class="chip-sub">60 min total</span></a></li>
+          <li><a class="chip" href="#submit"><span>Submit</span><span class="chip-sub">55 min total</span></a></li>
         </ol>
       </nav>
     </header>
-
-    <!-- ===================== right column: progress ===================== -->
-    <aside class="side" aria-label="Your progress">
-      <div class="panel progress-panel" id="progress-panel">
-        <button class="side-toggle" type="button" aria-expanded="false" aria-controls="progress-panel" aria-label="Show your progress" title="Show your progress">‹</button>
-        <h2>Your progress</h2>
-        <ol class="progress-rows">
-          <li class="progress-row" data-progress-for="read"><a href="#read"><span class="n">1</span><span>Read</span><span class="badge badge-gold">12 min</span><span class="tick"><svg><use href="#i-check"/></svg></span></a></li>
-          <li class="progress-row" data-progress-for="watch"><a href="#watch"><span class="n">2</span><span>Watch</span><span class="badge badge-gold">5 min</span><span class="tick"><svg><use href="#i-check"/></svg></span></a></li>
-          <li class="progress-row" data-progress-for="tutor"><a href="#tutor"><span class="n">3</span><span>Path to CONGA</span><span class="badge badge-gold">20 min</span><span class="tick"><svg><use href="#i-check"/></svg></span></a></li>
-          <li class="progress-row" data-progress-for="lab"><a href="#lab"><span class="n">4</span><span>Lab</span><span class="badge badge-gold">15 min</span><span class="tick"><svg><use href="#i-check"/></svg></span></a></li>
-          <li class="progress-row" data-progress-for="questions"><a href="#questions"><span class="n">5</span><span>Questions</span><span class="badge badge-gold">8 min</span><span class="tick"><svg><use href="#i-check"/></svg></span></a></li>
-        </ol>
-        <div class="progress-stats">
-          <div class="stat"><p class="label">Done</p><div class="value" data-progress-count>0/5</div></div>
-          <div class="stat"><p class="label">Time spent</p><div class="value" data-time-spent>0 min</div></div>
-        </div>
-      </div>
-    </aside>
 
     <!-- ===================== sections ===================== -->
     <main class="main">
 
       <section id="read" class="part panel" aria-labelledby="read-title">
         <header class="section-head">
-          <div class="section-title-row"><h2 id="read-title">1 · Read</h2><span class="badge badge-gold">12 min</span></div>
-          <p class="subtitle">Below are a few focused reading passages from the original CONGA paper. As you read, think back to the routing simulation from our last class: why does 'blind' ECMP fail, and how can we shift the responsibility back into the network?</p>
+          <div class="section-title-row"><h2 id="read-title">1 · Read</h2><span class="badge badge-gold">7 min</span></div>
+          <p class="subtitle">Below are a few focused reading passages from the original CONGA paper. As you read, think back to the routing simulation from our last class: why does 'blind' ECMP fail, and how can we shift the responsibility back into the network? Passage 6 lists CONGA's five design properties, P1–P5: section 3 asks you to argue each fork of Figure 1 with them.</p>
         </header>
         <div class="reading">
           <article class="passage" aria-labelledby="passage-1-title">
@@ -120,7 +105,7 @@
             <p class="passage-text">
               However, it is well known <span class="cite">[2, 41, 9, 27, 44, 10]</span> that ECMP can balance load poorly. First, because ECMP randomly hashes flows to paths, hash collisions can cause significant imbalance if there are a few large flows. More importantly, ECMP uses <mark>a purely local decision</mark> to split traffic among equal cost paths without knowledge of potential downstream congestion on each path. Thus ECMP fares poorly with <mark>asymmetry caused by link failures</mark> that occur frequently and are disruptive in datacenters <span class="cite">[17, 34]</span>.
             </p>
-            <p class="passage-caption"><b>Section 1</b> · CONGA, SIGCOMM 2014 · Why ECMP falls short (Part 1 of 5)</p>
+            <p class="passage-caption"><b>Section 1</b> · CONGA, SIGCOMM 2014 · Why ECMP falls short (Part 1 of 6)</p>
           </article>
 
           <article class="passage" aria-labelledby="passage-2-title">
@@ -128,7 +113,7 @@
             <p class="passage-text">
               Broadly speaking, the prior work on addressing ECMP’s shortcomings can be classified as either centralized scheduling (e.g., Hedera <span class="cite">[2]</span>), local switch mechanisms (e.g., Flare <span class="cite">[27]</span>), or host-based transport protocols (e.g., MPTCP <span class="cite">[41]</span>). These approaches all have important drawbacks. <mark>Centralized schemes are too slow for the traffic volatility</mark> in datacenters <span class="cite">[28, 8]</span> and <mark>local congestion-aware mechanisms are suboptimal and can perform even worse than ECMP with asymmetry</mark> (<span class="cite">§2.4</span>). <mark>Host-based methods such as MPTCP are challenging to deploy</mark> because network operators often do not control the end-host stack (e.g., in a public cloud) and even when they do, some high performance applications (such as low latency storage systems <span class="cite">[39, 7]</span>) bypass the kernel and implement their own transport.
             </p>
-            <p class="passage-caption"><b>Section 1</b> · CONGA, SIGCOMM 2014 · Why previous approaches fail (Part 2 of 5)</p>
+            <p class="passage-caption"><b>Section 1</b> · CONGA, SIGCOMM 2014 · Why previous approaches fail (Part 2 of 6)</p>
           </article>
 
           <article class="passage" aria-labelledby="passage-3-title">
@@ -136,7 +121,7 @@
             <p class="passage-text">
               Figure 1 surveys the design space for load balancing and places CONGA in context by following the thick red lines through the design tree. At the highest level, CONGA is a distributed scheme to allow <mark>rapid round-trip timescale reaction to congestion</mark> to cope with bursty datacenter traffic <span class="cite">[28, 8]</span>. CONGA is <mark>implemented within the network to avoid the deployment issues of host-based methods</mark> and additional complexity in the transport layer. To deal with asymmetry, unlike earlier proposals such as Flare <span class="cite">[27]</span> and LocalFlow <span class="cite">[44]</span> that only use local information, <mark>CONGA uses global congestion information,</mark> a design choice justified in detail in <span class="cite">§2.4</span>.
             </p>
-            <p class="passage-caption"><b>Section 1</b> · CONGA, SIGCOMM 2014 · CONGA in the design space (Part 3 of 5)</p>
+            <p class="passage-caption"><b>Section 1</b> · CONGA, SIGCOMM 2014 · CONGA in the design space (Part 3 of 6)</p>
           </article>
 
           <article class="passage" aria-labelledby="passage-4-title">
@@ -144,15 +129,30 @@
             <p class="passage-text">
               Next, the most general design would sense congestion on every link and send generalized link state packets to compute congestion-sensitive routes <span class="cite">[16, 48, 51, 36]</span>. However, this is an N-party protocol with complex control loops, likely to be fragile and hard to deploy... CONGA instead uses <mark>a 2-party “leaf-to-leaf” mechanism</mark> to convey path-wise congestion metrics between pairs of top-of-the-rack switches (also termed leaf switches) in a datacenter fabric. The leaf-to-leaf scheme is <mark>provably near-optimal in typical 2-tier Clos topologies</mark> (henceforth called Leaf-Spine), simple to analyze, and easy to deploy.
             </p>
-            <p class="passage-caption"><b>Section 1</b> · CONGA, SIGCOMM 2014 · Leaf-to-leaf feedback (Part 4 of 5)</p>
+            <p class="passage-caption"><b>Section 1</b> · CONGA, SIGCOMM 2014 · Leaf-to-leaf feedback (Part 4 of 6)</p>
           </article>
 
           <article class="passage" aria-labelledby="passage-5-title">
             <h3 class="passage-title" id="passage-5-title"><span class="passage-n">5</span>Flowlets</h3>
             <p class="passage-text">
-              Finally, in the lowest branch of the design tree, CONGA is constructed <mark>work with flowlets <span class="cite">[27]</span> to achieve a higher granularity of control</mark> and resilience to the flow size distribution while <mark>not requiring any modifications to TCP.</mark> Of course, CONGA could also be made to operate per packet by using a very small flowlet inactivity gap (see <span class="cite">§3.4</span>) to perform optimally with a future reordering-resilient TCP.
+              Finally, in the lowest branch of the design tree, CONGA is constructed to <mark>work with flowlets <span class="cite">[27]</span> to achieve a higher granularity of control</mark> and resilience to the flow size distribution while <mark>not requiring any modifications to TCP.</mark> Of course, CONGA could also be made to operate per packet by using a very small flowlet inactivity gap (see <span class="cite">§3.4</span>) to perform optimally with a future reordering-resilient TCP.
             </p>
-            <p class="passage-caption"><b>Section 1</b> · CONGA, SIGCOMM 2014 · Flowlets (Part 5 of 5)</p>
+            <p class="passage-caption"><b>Section 1</b> · CONGA, SIGCOMM 2014 · Flowlets (Part 5 of 6)</p>
+          </article>
+
+          <article class="passage" aria-labelledby="passage-6-title">
+            <h3 class="passage-title" id="passage-6-title"><span class="passage-n">6</span>The five properties CONGA targets</h3>
+            <div class="passage-text">
+              <p>CONGA is an in-network congestion-aware load balancing mechanism for datacenter fabrics. In designing CONGA, we targeted a solution with a number of key properties:</p>
+              <ol class="passage-props">
+                <li><span class="ptag">P1</span><span><b>Responsive:</b> Datacenter traffic is very volatile and bursty <span class="cite">[18, 28, 8]</span> and switch buffers are shallow <span class="cite">[4]</span>. Thus, with CONGA, we aim for <mark>rapid round-trip timescale (e.g., 10s of microseconds) reaction to congestion.</mark></span></li>
+                <li><span class="ptag">P2</span><span><b>Transport independent:</b> As a network mechanism, CONGA must be oblivious to the transport protocol at the end-host (TCP, UDP, etc). Importantly, <mark>it should not require any modifications to TCP.</mark></span></li>
+                <li><span class="ptag">P3</span><span><b>Robust to asymmetry:</b> CONGA must <mark>handle asymmetry due to link failures</mark> (which have been shown to be frequent and disruptive in datacenters <span class="cite">[17, 34]</span>) or high bandwidth flows that are not well balanced.</span></li>
+                <li><span class="ptag">P4</span><span><b>Incrementally deployable:</b> It should be possible to <mark>apply CONGA to only a subset of the traffic and only a subset of the switches.</mark></span></li>
+                <li><span class="ptag">P5</span><span><b>Optimized for Leaf-Spine topology:</b> CONGA must <mark>work optimally for 2-tier Leaf-Spine topologies</mark> (Figure 4) that cover the needs of most enterprise datacenter deployments, though it should also benefit larger topologies.</span></li>
+              </ol>
+            </div>
+            <p class="passage-caption"><b>Section 2.1</b> · CONGA, SIGCOMM 2014 · Desired properties (Part 6 of 6) · Section 3 asks you to argue with these.</p>
           </article>
         </div>
       </section>
@@ -160,7 +160,7 @@
       <section id="watch" class="part panel" aria-labelledby="watch-title">
         <header class="section-head">
           <div class="section-title-row"><h2 id="watch-title">2 · Watch</h2><span class="badge badge-gold">5 min</span></div>
-          <p class="subtitle">Watch this short video overview, that connects all the dots. Try to notice: how does the Leaf-to-Leaf feedback mechanism bypass the slow response times of a centralized controller, like the one we saw in Jupiter?</p>
+          <p class="subtitle">Watch this short video overview that connects all the dots. Try to notice: how does the Leaf-to-Leaf feedback mechanism bypass the slow response times of a centralized controller, like the one we saw in Jupiter?</p>
         </header>
         <video class="watch-video" controls preload="metadata" playsinline aria-label="CONGA paper summary video">
           <source src="conga-summary.mp4" type="video/mp4">
@@ -196,7 +196,7 @@
           <div class="section-title-row"><h2 id="questions-title">5 · Questions</h2><span class="badge badge-gold">8 min</span></div>
           <p class="subtitle">Six to eight self-check questions, each with a Check button and instant feedback.</p>
         </header>
-        <div class="slot">Questions</div>
+        <p class="coming-soon">Coming soon. The questions will appear here before the homework opens.</p>
       </section>
 
       <section id="submit" class="part panel" aria-labelledby="submit-title">
@@ -204,7 +204,7 @@
           <div class="section-title-row"><h2 id="submit-title">Submit</h2></div>
           <p class="subtitle">One Submit sends everything. If you submit again later, the new answers replace the old ones.</p>
         </header>
-        <button class="btn btn-primary" type="button" disabled>Submit</button>
+        <p class="coming-soon">Coming soon. Until then, everything you do is saved in this browser, so nothing is lost.</p>
       </section>
 
       <footer class="build-stamp">Build <!--BUILD-->local copy<!--/BUILD--></footer>

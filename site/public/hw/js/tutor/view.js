@@ -58,11 +58,11 @@ export function initTutor({ root, badge, progress }) {
     treePane.classList.toggle("is-open", open);
     treeToggle.textContent = open ? "Hide Figure 1" : "Show Figure 1";
   } }, "Show Figure 1");
-  const propChips = h("ul", { class: "chips prop-chips", "aria-label": "Properties you used" });
+  const propChips = h("ul", { class: "prop-statuses", "aria-label": "Properties: used, missed or not yet" });
   const treePane = h("div", { class: "tutor-tree" },
     h("div", { class: "tree-strip-row" }, strip, treeToggle),
     svgHost,
-    h("p", { class: "label" }, "Properties you argued with (§2.1)"),
+    h("p", { class: "label prop-status-head" }, "Properties (§2.1) ", h("span", { class: "prop-key is-used" }, "used"), " ", h("span", { class: "prop-key is-missed" }, "missed")),
     propChips,
   );
   const log = h("ol", { class: "chat-log", "aria-live": "polite", "aria-label": "Conversation with the tutor" });
@@ -94,6 +94,11 @@ export function initTutor({ root, badge, progress }) {
   function renderTreePane() {
     const view = M.treeView(state);
     const cur = M.currentForkId(state);
+    // guided mode: the branch chosen in the form (not saved until Check) shows on the tree too
+    if (state.mode === "fallback" && cur && !state.forks[cur].revealed) {
+      syncGuided(cur);
+      for (const o of forkById(cur).options) view[o.id].mine = o.id === fb.pick;
+    }
     renderTree(svgHost, view, {
       onNode,
       canAsk: (id) => {
@@ -109,10 +114,14 @@ export function initTutor({ root, badge, progress }) {
       return h("li", {}, h("span", { class: `chip${i === state.fork ? " is-selected" : ""}${fs.revealed ? " is-done" : ""}` },
         h("span", { class: "chip-sub" }, f.id), h("span", {}, text)));
     }));
-    const used = new Set(M.propertiesUsed(state));
+    // only each property's state (used / missed / open); guided mode's form already lists the names
+    const status = M.propertyStatus(state);
+    const named = state.mode !== "fallback";
+    const STATUS = { used: "used", missed: "missed by you, used by the paper", open: "not used yet" };
     propChips.replaceChildren(...PROPERTIES.map((p) =>
-      h("li", {}, h("span", { class: `chip prop-chip${used.has(p.id) ? " is-selected" : ""}`, title: p.name },
-        h("span", {}, p.id), h("span", { class: "chip-sub" }, p.name)))));
+      h("li", { class: `prop-status is-${status[p.id]}`, title: `${p.id} ${p.name}: ${STATUS[status[p.id]]}` },
+        h("b", {}, p.id), named ? h("span", {}, p.name) : null,
+        h("span", { class: "sr-only" }, `: ${STATUS[status[p.id]]}`))));
   }
 
   function renderLog() {
@@ -141,8 +150,13 @@ export function initTutor({ root, badge, progress }) {
   }
 
   // ---------- guided (fallback) mode ----------
+  /** New fork: fresh form; carry over a branch the student already named (e.g. a quick reply before the tutor failed). */
+  function syncGuided(forkId) {
+    if (fb.forkId !== forkId) fb = { forkId, pick: M.guidedPick(state), props: new Set() };
+  }
+
   function guided(forkId) {
-    if (fb.forkId !== forkId) fb = { forkId, pick: null, props: new Set() };
+    syncGuided(forkId);
     const f = forkById(forkId);
     const check = h("button", { class: "btn btn-primary", type: "button", onclick: () => {
       const r = M.fallbackAnswer(state, fb.pick, [...fb.props]);
@@ -153,7 +167,7 @@ export function initTutor({ root, badge, progress }) {
     chipRow(branches, f.options.map((o) => ({ id: o.id, label: o.label })), {
       selected: fb.pick, label: "Your branch", onSelect: (id) => { fb.pick = id; refresh(); renderTreePane(); },
     });
-    const props = h("div", { class: "chips", role: "group", "aria-label": "Properties that support your branch (1 to 3)" },
+    const props = h("div", { class: "chips prop-pick", role: "group", "aria-label": "Properties that support your branch (1 to 3)" },
       ...PROPERTIES.map((p) => {
         const b = h("button", { class: "chip", type: "button", "aria-pressed": String(fb.props.has(p.id)), title: p.name }, h("span", {}, p.id), h("span", { class: "chip-sub" }, p.name));
         b.addEventListener("click", () => {

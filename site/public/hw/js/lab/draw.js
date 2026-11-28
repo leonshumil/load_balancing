@@ -3,7 +3,7 @@
 // right; a leaf that both sends and receives appears on both sides (the "unfolded" fabric).
 // Left links are uplinks (leaf->spine), right links downlinks (spine->leaf).
 // Link thickness = load; label "load / capacity"; a full link turns gold and says "full";
-// failed (0) is dashed. The selected demand's paths are violet with their share. Small dots
+// failed (0) is dashed. The selected demand's paths are violet (shares in the results card). Small dots
 // move along loaded links at a speed that follows the throughput (none with reduced motion).
 // The SVG is built once per topology and then updated, so loads animate (CSS, ~400 ms).
 // Styles in hw.css (tokens only).
@@ -27,6 +27,9 @@ export function columns(net, demands) {
   const right = net.leaves.filter((l) => dst.has(l));
   return { left, right };
 }
+
+/** Dense fabrics (Fig 17: 40 links) stay straight; there one demand is shown at a time instead. */
+const isDense = (links) => links.length > 16;
 
 export function createFabric(host, { onLink, onSelectSource } = {}) {
   let built = null;
@@ -54,17 +57,32 @@ export function createFabric(host, { onLink, onSelectSource } = {}) {
     const gDots = el("g", { class: "fabric-dots", "aria-hidden": "true" }, svg);
     const gNodes = el("g", { class: "fabric-nodes" }, svg);
     const linkEls = new Map();
+    // Links that cross another link (e.g. L0→S1 and L1→S0 in the Sandbox) get a slight curve, so the
+    // crossing reads as two links: descending ones bow up, ascending ones bow down.
+    const seg = (x) => at(x).flat();
+    const crosses = (a, c) => {
+      const [p1x, p1y, p2x, p2y] = a, [p3x, p3y, p4x, p4y] = c;
+      const d = (ax, ay, bx, by, cx, cy) => (bx - ax) * (cy - ay) - (by - ay) * (cx - ax);
+      const shared = [[p1x, p1y], [p2x, p2y]].some(([u, v]) => [[p3x, p3y], [p4x, p4y]].some(([w, z]) => Math.hypot(u - w, v - z) < 1));
+      return !shared && d(p3x, p3y, p4x, p4y, p1x, p1y) * d(p3x, p3y, p4x, p4y, p2x, p2y) < 0 && d(p1x, p1y, p2x, p2y, p3x, p3y) * d(p1x, p1y, p2x, p2y, p4x, p4y) < 0;
+    };
+    const curved = new Set(links.filter((x) => !isDense(links) && links.some((o) => o !== x && o.dir === x.dir && crosses(seg(x), seg(o)))).map((x) => x.link));
     for (const x of links) {
       const [[x1, y1], [x2, y2]] = at(x);
+      const bend = curved.has(x.link) ? (y2 > y1 ? -1 : 1) * 16 : 0;
+      const cx = (x1 + x2) / 2;
+      const cy = (y1 + y2) / 2 + bend * 2; // control point; the curve's midpoint sits `bend` px off the straight line
+      const d = bend ? `M${x1},${y1} Q${cx},${cy} ${x2},${y2}` : `M${x1},${y1} L${x2},${y2}`;
+      const [mx, my] = [cx, (y1 + y2) / 2 + bend];
       const g = el("g", { class: "fabric-link" }, gLinks);
-      const line = el("line", { x1, y1, x2, y2, class: "fabric-line" }, g);
-      const hit = el("line", { x1, y1, x2, y2, class: "fabric-hit" }, g);
-      const label = el("text", { x: (x1 + x2) / 2, y: (y1 + y2) / 2 - 9, class: "fabric-label", "text-anchor": "middle" }, g);
+      const line = el("path", { d, class: "fabric-line", "data-x1": x1, "data-y1": y1, "data-x2": x2, "data-y2": y2, "data-curved": bend ? "1" : null }, g);
+      const hit = el("path", { d, class: "fabric-hit" }, g);
+      const label = el("text", { x: mx, y: my - 9, class: "fabric-label", "text-anchor": "middle" }, g);
       const title = el("title", {}, hit);
       const fire = () => { const r = hit.getBoundingClientRect(); onLink?.(x.phys, r.left + r.width / 2, r.top + r.height / 2); };
       g.addEventListener("click", () => { if (g.classList.contains("is-editable")) fire(); });
       g.addEventListener("keydown", (e) => { if ((e.key === "Enter" || e.key === " ") && g.classList.contains("is-editable")) { e.preventDefault(); fire(); } });
-      linkEls.set(x.link, { ...x, g, line, label, title, x1, y1, x2, y2, len: Math.hypot(x2 - x1, y2 - y1) });
+      linkEls.set(x.link, { ...x, g, line, label, title, d, len: Math.hypot(x2 - x1, y2 - y1) + Math.abs(bend) });
     }
     const node = (name, [x, y], kind, side) => {
       const g = el("g", { class: `fabric-node is-${kind}`, "data-name": name, "data-side": side ?? "" }, gNodes);
@@ -84,18 +102,23 @@ export function createFabric(host, { onLink, onSelectSource } = {}) {
       el("text", { x, y: H - 6, class: "fabric-col", "text-anchor": "middle" }, svg).textContent = text;
     }
     host.replaceChildren(svg);
-    built = { key, svg, links: linkEls, pos, gPaths, gDots, nodes, dense: links.length > 16 };
+    built = { key, svg, links: linkEls, pos, gPaths, gDots, nodes, dense: isDense(links) };
     return built;
   }
 
   /**
    * opts: { net, baseNet, demands, selected, result (null hides the numbers), editable,
-   *         selectedLink, motion (dots on), canSwitch (several demands to show) }
+   *         selectedLink, motion (dots on), canSwitch (several demands to show),
+   *         focus: { solid: [spines], dashed: [spines] } (optional) }
+   * focus (Fig 17, where every leaf reaches every spine): only the selected demand's paths stay
+   * visible: solid = the Nash flow, dashed = the better flow, as in the paper; all else fades.
    */
-  function update({ net, baseNet, demands, selected, result, editable, selectedLink, motion, canSwitch }) {
+  function update({ net, baseNet, demands, selected, result, editable, selectedLink, motion, canSwitch, focus }) {
     const b = build(net, baseNet, demands);
     const d = demands[selected] ?? null;
     const onDemand = (x) => d && ((x.dir === "up" && x.from === d.src) || (x.dir === "down" && x.to === d.dst));
+    const focusSpines = focus ? new Set([...focus.solid, ...focus.dashed]) : null;
+    const inFocus = (x) => !focusSpines || (onDemand(x) && focusSpines.has(x.dir === "up" ? x.to : x.from));
     for (const x of b.links.values()) {
       const cap = net.cap[x.link] ?? 0;
       const load = result?.linkLoad[x.link] ?? 0;
@@ -107,7 +130,8 @@ export function createFabric(host, { onLink, onSelectSource } = {}) {
       x.g.classList.toggle("is-full", full);
       x.g.classList.toggle("is-selected", selectedLink === x.phys);
       x.g.classList.toggle("is-editable", !!editable);
-      const showLabel = !b.dense || onDemand(x) || selectedLink === x.phys;
+      x.g.classList.toggle("is-faded", !inFocus(x));
+      const showLabel = (!b.dense || onDemand(x) || selectedLink === x.phys) && inFocus(x);
       x.label.textContent = !showLabel ? "" : failed ? "failed" : result ? `${fmt(load)} / ${cap}${full ? " full" : ""}` : `${cap}G`;
       const desc = `${x.from}→${x.to}: ${failed ? "failed" : result ? `${fmt(load)} of ${cap} Gbps${full ? ", full" : ""}` : `${cap} Gbps`}`;
       x.title.textContent = editable ? `${desc}. Click to change the capacity of ${x.phys.replace("-", "–")}` : desc;
@@ -120,21 +144,16 @@ export function createFabric(host, { onLink, onSelectSource } = {}) {
       else { g.removeAttribute("role"); g.removeAttribute("tabindex"); g.classList.remove("is-clickable"); }
     }
     for (const [n, g] of Object.entries(b.nodes.R)) g.classList.toggle("is-dst", !!d && n === d.dst);
-    // the selected demand's paths, with their shares
+    // the selected demand's paths (their shares are in the results card)
     b.gPaths.replaceChildren();
     if (d && b.pos.L[d.src] && b.pos.R[d.dst]) {
-      const rates = result?.perDemand[selected]?.rates ?? {};
-      const total = Object.values(rates).reduce((a, x) => a + x, 0);
-      const ok = net.spines.filter((s) => (net.cap[`${d.src}>${s}`] ?? 0) > 0 && (net.cap[`${s}>${d.dst}`] ?? 0) > 0);
+      const ok = net.spines.filter((s) => (net.cap[`${d.src}>${s}`] ?? 0) > 0 && (net.cap[`${s}>${d.dst}`] ?? 0) > 0 && (!focusSpines || focusSpines.has(s)));
       for (const s of ok) {
-        const [sx, sy] = b.pos.L[d.src];
-        const [mx, my] = b.pos.S[s];
-        const [dx, dy] = b.pos.R[d.dst];
-        el("polyline", { points: `${sx + 19},${sy} ${mx},${my} ${dx - 19},${dy}`, class: "fabric-path" }, b.gPaths);
-        if (result) {
-          const share = total > 0 ? Math.round(((rates[s] ?? 0) / total) * 100) : 0;
-          el("text", { x: mx, y: my - 25, class: "fabric-share", "text-anchor": "middle" }, b.gPaths).textContent = `${fmt(rates[s] ?? 0)}G · ${share}%`;
-        }
+        const kind = !focus ? "" : focus.solid.includes(s) ? " is-solid" : " is-dashed";
+        // follow the links themselves (curved ones too): uplink then downlink
+        const up = b.links.get(`${d.src}>${s}`);
+        const down = b.links.get(`${s}>${d.dst}`);
+        if (up && down) el("path", { d: `${up.d} ${down.d}`, class: `fabric-path${kind}` }, b.gPaths);
       }
     }
     // moving dots: speed follows the throughput on the link
@@ -142,11 +161,11 @@ export function createFabric(host, { onLink, onSelectSource } = {}) {
     if (result && motion) {
       for (const x of b.links.values()) {
         const load = result.linkLoad[x.link] ?? 0;
-        if (!(load > 0.5)) continue;
+        if (!(load > 0.5) || !inFocus(x)) continue;
         const dur = Math.min(8, Math.max(0.6, x.len / (2.2 * load)));
         for (const phase of [0, 0.5]) {
           const c = el("circle", { r: 2.6, class: "fabric-flow" }, b.gDots);
-          el("animateMotion", { dur: `${dur.toFixed(2)}s`, repeatCount: "indefinite", begin: `-${(dur * phase).toFixed(2)}s`, path: `M${x.x1},${x.y1} L${x.x2},${x.y2}` }, c);
+          el("animateMotion", { dur: `${dur.toFixed(2)}s`, repeatCount: "indefinite", begin: `-${(dur * phase).toFixed(2)}s`, path: x.d }, c);
         }
       }
     }

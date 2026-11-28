@@ -6,7 +6,7 @@ import { FORKS } from "../path/model.js";
 import {
   MAX_TURNS, initialState, start, currentForkId, addStudent, applyReply, revealCurrent, advance,
   fallbackAnswer, goOffline, goLive, historyFor, requestBody, treeView, nodeQuestion,
-  recap, propertiesUsed, isDone, restore, submission,
+  recap, propertiesUsed, isDone, restore, submission, guidedPick, propertyStatus,
 } from "./model.js";
 
 const reply = (over = {}) => ({ reply: "Why?", cites: [], detected_pick: null, properties_mentioned: [], ready_to_reveal: false, fallback: false, ...over });
@@ -225,4 +225,49 @@ test("submission: what Submit (step 07) sends: picks, properties, turns per fork
   assert.equal(sub.forks.F1.agree, true);
   assert.equal(sub.mode, "live");
   assert.ok(!("messages" in sub));
+});
+
+// review 4: a quick reply ("I'd pick Distributed.") before the tutor fails carries over to guided mode
+test("guidedPick: the branch the student already named in this fork, for guided mode to preselect", () => {
+  const fail = (s) => goOffline(s, "error");
+  assert.equal(guidedPick(fail(addStudent(live(), "I'd pick Distributed."))), "distributed", "quick reply");
+  assert.equal(guidedPick(fail(addStudent(live(), "centralized, because one view sees everything"))), "centralized", "free text, any case");
+  assert.equal(guidedPick(fail(live())), null, "nothing said yet");
+  assert.equal(guidedPick(fail(addStudent(live(), "Centralized or distributed? Not sure."))), null, "both named: no guess");
+  assert.equal(guidedPick(fail(addStudent(live(), "Why?"))), null);
+  // the latest message that names one branch wins
+  let s = addStudent(addStudent(live(), "I'd pick Centralized."), "Actually, I'd pick Distributed.");
+  assert.equal(guidedPick(fail(s)), "distributed");
+  // a pick the tutor already detected wins over text
+  s = applyReply(addStudent(live(), "the second one"), reply({ detected_pick: "centralized" })).state;
+  assert.equal(guidedPick(fail(s)), "centralized");
+  // only this fork's messages count
+  const f2 = advance(revealCurrent(addStudent(live(), "I'd pick Distributed."), "button"));
+  assert.equal(currentForkId(f2), "F2");
+  assert.equal(guidedPick(fail(f2)), null);
+  assert.equal(guidedPick(fail(addStudent(f2, "I'd pick In-Network."))), "in-network");
+});
+
+test("guidedPick: 'Per Flow' does not match inside 'Per Flowlet', and labels with commas match by their head", () => {
+  let s = live();
+  for (let i = 0; i < 4; i++) s = advance(revealCurrent(addStudent(s, "x"), "button"));
+  assert.equal(currentForkId(s), "F5");
+  assert.equal(guidedPick(addStudent(s, "I'd pick Per Flowlet (CONGA).")), "per-flowlet");
+  assert.equal(guidedPick(addStudent(s, "per flow is enough")), "per-flow");
+  let s3 = live();
+  for (let i = 0; i < 2; i++) s3 = advance(revealCurrent(addStudent(s3, "x"), "button"));
+  assert.equal(currentForkId(s3), "F3");
+  assert.equal(guidedPick(addStudent(s3, "I'd pick Global, Congestion-Aware.")), "global");
+  assert.equal(guidedPick(addStudent(s3, "I'd pick Local (Stateless or Congestion-Aware).")), "local");
+});
+
+// review 9: under the tree, only the state of each property: used, missed (a revealed fork relied on it
+// and the student never used it), or open
+test("propertyStatus: used anywhere, missed only for forks already revealed (CONGA Fig 1 answer key)", () => {
+  let s = goOffline(live(), "error");
+  assert.deepEqual(propertyStatus(s), { P1: "open", P2: "open", P3: "open", P4: "open", P5: "open" });
+  s = fallbackAnswer(s, "distributed", ["P1"]).state; // F1 relies on P1 + P5
+  assert.deepEqual(propertyStatus(s), { P1: "used", P2: "open", P3: "open", P4: "open", P5: "missed" });
+  s = fallbackAnswer(advance(s), "in-network", ["P5", "P2"]).state; // F2 relies on P2 + P4
+  assert.deepEqual(propertyStatus(s), { P1: "used", P2: "used", P3: "open", P4: "missed", P5: "used" });
 });

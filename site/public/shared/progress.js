@@ -1,6 +1,6 @@
 // Progress: finished sections (stored under `storeKey`) and the thin reading line.
 // Anything marked [data-progress-for="<id>"] gets .is-done when that section is
-// finished (rail icon, contents chip, progress-panel row); [data-done-for="<id>"]
+// finished (rail icon, contents chip); [data-done-for="<id>"]
 // elements are shown/hidden; [data-progress-count] shows "done/total".
 // DOM is only touched in start()/render(), so importing this does nothing.
 

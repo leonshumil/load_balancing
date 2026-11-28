@@ -174,5 +174,33 @@ test("whyLine: one sentence per scheme, from the paper's argument (CONGA §2.4)"
   assert.match(whyLine(s, "fig2", "conga"), /66\.6/);
   assert.match(whyLine(setScenario(s, "fig3b"), "fig3b", "weighted"), /S0/);
   for (const sc of ["fig2", "fig3a", "fig3b"]) for (const k of ["ecmp", "localOnly", "conga", "weighted"]) assert.ok(whyLine(s, sc, k).length > 20, `${sc} ${k}`);
-  assert.match(whyLine(setScenario(s, "sandbox"), "sandbox", "ecmp"), /full|No link/);
+  assert.match(whyLine(setScenario(s, "sandbox"), "sandbox", "ecmp"), /full|No link/i);
+});
+
+// review 12: the shares move from the spine labels into the results card
+import { pathSplitLine } from "./state.js";
+test("pathSplitLine (CONGA §2.4, Fig 2): upper / lower path shares of what the selected demand delivers", () => {
+  const s = initialState();
+  assert.equal(pathSplitLine(s, "fig2", "ecmp"), "Upper path (S0) 56% · lower path (S1) 44%", "ECMP: 50 + 40 delivered");
+  assert.equal(pathSplitLine(s, "fig2", "conga"), "Upper path (S0) 67% · lower path (S1) 33%", "CONGA: 66.7 / 33.3");
+  assert.equal(pathSplitLine(s, "fig2", "localOnly"), "Upper path (S0) 50% · lower path (S1) 50%", "local only: 40 / 40");
+});
+
+test("pathSplitLine: three or more paths are listed by spine; one path says so", () => {
+  const s = showEcmpWins(initialState(), "fig17");
+  assert.equal(pathSplitLine(s, "ecmpWins", "conga"), "S0 0% · S1 100% · S2 0%", "Fig 17: L0→L1 stuck on S1 (Nash)");
+  assert.equal(pathSplitLine(s, "ecmpWins", "ecmp"), "S0 33% · S1 33% · S2 33%");
+  let one = initialState();
+  for (const k of ["ecmp", "localOnly", "conga"]) one = predict(one, "fig2", k, 90);
+  one = setLinkCap(reveal(one, "fig2", "all"), "fig2", "L0-S1", 0);
+  assert.equal(pathSplitLine(one, "fig2", "ecmp"), "One path (S0)");
+});
+
+// review 13: the Sandbox starts where the schemes disagree (Fig 2's fabric, S1→L2 weak, plus a 40G demand from L1)
+test("Sandbox default: ECMP 100, local only 80, CONGA 120 of 120 Gbps", () => {
+  const r = results(setScenario(initialState(), "sandbox"), "sandbox");
+  near(r.ecmp.total, 100, 0.5, "ECMP");
+  near(r.localOnly.total, 80, 0.5, "local only");
+  near(r.conga.total, 120, 0.5, "CONGA");
+  assert.equal(r.conga.demand, 120);
 });
