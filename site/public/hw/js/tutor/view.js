@@ -94,6 +94,11 @@ export function initTutor({ root, badge, progress }) {
   function renderTreePane() {
     const view = M.treeView(state);
     const cur = M.currentForkId(state);
+    // guided mode: the branch chosen in the form (not saved until Check) shows on the tree too
+    if (state.mode === "fallback" && cur && !state.forks[cur].revealed) {
+      syncGuided(cur);
+      for (const o of forkById(cur).options) view[o.id].mine = o.id === fb.pick;
+    }
     renderTree(svgHost, view, {
       onNode,
       canAsk: (id) => {
@@ -141,9 +146,13 @@ export function initTutor({ root, badge, progress }) {
   }
 
   // ---------- guided (fallback) mode ----------
-  function guided(forkId) {
-    // carry over a branch the student already named in this fork (e.g. a quick reply before the tutor failed)
+  /** New fork: fresh form; carry over a branch the student already named (e.g. a quick reply before the tutor failed). */
+  function syncGuided(forkId) {
     if (fb.forkId !== forkId) fb = { forkId, pick: M.guidedPick(state), props: new Set() };
+  }
+
+  function guided(forkId) {
+    syncGuided(forkId);
     const f = forkById(forkId);
     const check = h("button", { class: "btn btn-primary", type: "button", onclick: () => {
       const r = M.fallbackAnswer(state, fb.pick, [...fb.props]);

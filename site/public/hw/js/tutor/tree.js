@@ -66,9 +66,19 @@ export function renderTree(host, view, { onNode, canAsk } = {}) {
     el("path", { d: `M${px},${py + 7} V${midY} H${cx} V${cy - 8}`, class: `fig1-edge is-${view[id].status}` }, edges);
   }
 
+  // the current fork: a faint band behind its row (the branches stay neutral until one is picked)
+  const current = Object.keys(POS).filter((id) => id !== "root" && view[id].status === "current");
+  if (current.length) {
+    const xs = current.map((id) => POS[id][0]);
+    const cy = POS[current[0]][1];
+    el("rect", { x: Math.max(2, Math.min(...xs) - 70), y: cy - 20, width: Math.min(W - 4, Math.max(...xs) - Math.min(...xs) + 140), height: 56, rx: 12, class: "fig1-band" }, edges.parentNode.insertBefore(el("g", { class: "fig1-bands" }), edges));
+  }
+
   const nodes = el("g", { class: "fig1-nodes" }, svg);
   const rootDot = el("circle", { cx: POS.root[0], cy: POS.root[1], r: 4, class: "fig1-root" }, nodes);
   rootDot.setAttribute("aria-hidden", "true");
+  // the root is unlabeled in the paper's figure; the label says what the tree is about
+  el("text", { x: POS.root[0] + 10, y: POS.root[1] + 4, class: "fig1-root-label" }, nodes).textContent = "Load balancing";
 
   for (const id of Object.keys(POS)) {
     if (id === "root") continue;

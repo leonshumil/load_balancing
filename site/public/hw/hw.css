@@ -193,12 +193,18 @@
 .tree-svg { background: var(--panel-raised); border-radius: var(--radius-md); padding: 6px 4px; }
 .fig1 { width: 100%; height: auto; display: block; font-family: var(--font); }
 .fig1-edge { fill: none; stroke: var(--border); stroke-width: 2; transition: stroke 0.5s ease, stroke-width 0.5s ease; }
-.fig1-edge.is-current { stroke: var(--violet-soft); stroke-dasharray: 3 4; }
+.fig1-edge.is-current { stroke: var(--muted); stroke-dasharray: 3 4; }
 .fig1-edge.is-path { stroke: var(--violet); stroke-width: 3.5; }
 .fig1-edge.is-rejected { stroke: var(--gold); stroke-dasharray: 6 5; }
 .fig1-root { fill: var(--violet); }
 .fig1-dot { fill: var(--panel); stroke: var(--muted); stroke-width: 2; transition: fill 0.5s ease, stroke 0.5s ease; }
-.fig1-node.is-current .fig1-dot { stroke: var(--violet); stroke-width: 3; filter: drop-shadow(0 0 5px var(--violet)); }
+/* current fork: neutral branches (nothing looks chosen) on a faint band; later levels dimmed */
+.fig1-node.is-current .fig1-dot { stroke: var(--text); stroke-width: 2.5; }
+.fig1-band { fill: var(--violet-fill); opacity: 0.6; }
+.fig1-node.is-current.is-mine .fig1-dot { fill: var(--violet); stroke: var(--violet); }
+.fig1-node.is-future { opacity: 0.38; }
+.fig1-edge.is-future { opacity: 0.38; }
+.fig1-root-label { fill: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
 .fig1-node.is-path .fig1-dot { fill: var(--violet); stroke: var(--violet); }
 .fig1-node.is-rejected .fig1-dot { fill: var(--panel); stroke: var(--gold); }
 .fig1-mine { fill: none; stroke: var(--lavender); stroke-width: 2; }
