@@ -210,8 +210,10 @@
 .fig1-node.is-current .fig1-dot { stroke: var(--text); stroke-width: 2.5; }
 .fig1-band { fill: var(--violet-fill); opacity: 0.6; }
 .fig1-node.is-current.is-mine .fig1-dot { fill: var(--violet); stroke: var(--violet); }
-.fig1-node.is-future { opacity: 0.38; }
-.fig1-edge.is-future { opacity: 0.38; }
+/* unreached levels: dim but readable (labels >= 3:1: 3.5 dark / 3.4 light at 0.78); their lines stay fainter */
+.fig1-node.is-future { opacity: 0.78; }
+.fig1-node.is-future .fig1-dot { opacity: 0.6; }
+.fig1-edge.is-future { opacity: 0.4; }
 .fig1-root-label { fill: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
 .fig1-node.is-path .fig1-dot { fill: var(--violet); stroke: var(--violet); }
 .fig1-node.is-rejected .fig1-dot { fill: var(--panel); stroke: var(--gold); }
