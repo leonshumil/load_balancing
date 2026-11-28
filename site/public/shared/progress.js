@@ -71,18 +71,31 @@ export function createProgress({ ids, storeKey, selector = ".progress" }) {
   return { start, setDone, render };
 }
 
+/** A tick of active time counts only while the tab is visible and there was input in the last minute. */
+export const IDLE_AFTER_MS = 60_000;
+export function countsAsActive({ visible, now, lastInput }) {
+  return !!visible && lastInput != null && now - lastInput <= IDLE_AFTER_MS;
+}
+
 /**
- * Time spent on the page while it is visible, stored in seconds under `storeKey`.
+ * Active time on the page, stored in seconds under `storeKey`: every `every` seconds, add them only if
+ * the tab is visible and the student did something (pointer, key, wheel, scroll, typing) in the last
+ * minute, so a tab left open doesn't count. Opening the page counts as input.
  * [data-time-spent] elements show whole minutes.
  */
 export function trackTime({ storeKey, every = 15 }) {
+  let lastInput = Date.now();
+  const touch = () => { lastInput = Date.now(); };
+  for (const type of ["pointerdown", "pointermove", "keydown", "wheel", "scroll", "touchstart", "input"]) {
+    addEventListener(type, touch, { passive: true, capture: true });
+  }
   const show = () => {
     const secs = Number(get(storeKey, 0)) || 0;
     document.querySelectorAll("[data-time-spent]").forEach((e) => { e.textContent = `${Math.floor(secs / 60)} min`; });
   };
   show();
   setInterval(() => {
-    if (document.visibilityState !== "visible") return;
+    if (!countsAsActive({ visible: document.visibilityState === "visible", now: Date.now(), lastInput })) return;
     set(storeKey, (Number(get(storeKey, 0)) || 0) + every);
     show();
   }, every * 1000);

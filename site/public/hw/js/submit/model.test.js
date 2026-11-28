@@ -45,9 +45,10 @@ test("clip: cuts long text with '…' and keeps short text", () => {
 const fullData = () => ({
   done: 3, total: 5, seconds: 42 * 60 + 30,
   tutor: { mode: "live", forks: [
-    { id: "F1", section: "§2.2", pick: "Distributed", paper: "Distributed", properties: ["P1", "P5"] },
-    { id: "F2", section: "§2.3", pick: "Host-Based", paper: "In-Network", properties: ["P2"] },
-    { id: "F3", section: "§2.4", pick: null, paper: "Global, Congestion-Aware", properties: [] },
+    { id: "F1", section: "§2.2", pick: "Distributed", paper: "Distributed", properties: ["P1", "P5"], paperProperties: ["P1", "P5"] },
+    { id: "F2", section: "§2.3", pick: "Host-Based", paper: "In-Network", properties: ["P2"], paperProperties: ["P2", "P4"] },
+    { id: "F3", section: "§2.4", pick: null, paper: "Global, Congestion-Aware", properties: [], paperProperties: ["P3"] },
+    { id: "F4", section: "§2.5", pick: "Leaf to Leaf", paper: "Leaf to Leaf", properties: [], paperProperties: ["P5", "P4"] },
   ] },
   lab: {
     fig2: [{ label: "ECMP", predicted: 95, result: 90 }, { label: "Local only", predicted: 85, result: 80 }, { label: "CONGA", predicted: null, result: 100 }],
@@ -60,9 +61,10 @@ const fullData = () => ({
 test("buildSummary: progress, Path to CONGA per fork, Lab Fig 2 vs results and both answers", () => {
   const t = buildSummary(fullData());
   assert.match(t, /Sections done: 3\/5 · active time: 42 min/);
-  assert.match(t, /F1 \(§2\.2\): Distributed \(paper: Distributed\) · P1, P5/);
-  assert.match(t, /F2 \(§2\.3\): Host-Based \(paper: In-Network\) · P2/);
-  assert.match(t, /F3 \(§2\.4\): not reached/);
+  assert.match(t, /^- F1: Distributed \(paper: Distributed\) · you: P1, P5 · paper: P1, P5$/m);
+  assert.match(t, /^- F2: Host-Based \(paper: In-Network\) · you: P2 · paper: P2, P4$/m);
+  assert.match(t, /^- F3: not reached$/m);
+  assert.match(t, /^- F4: Leaf to Leaf \(paper: Leaf to Leaf\) · you: – · paper: P5, P4$/m, "no properties named");
   assert.match(t, /ECMP: you 95, result 90/);
   assert.match(t, /CONGA: you –, result 100/);
   assert.match(t, /Why is local only worse\? TCP slows the lower path/);
@@ -104,7 +106,8 @@ test("collect: reads the sections' saved states through their own modules", () =
   assert.equal(d.done, 2);
   assert.equal(d.total, 5);
   assert.equal(d.seconds, 125);
-  assert.deepEqual(d.tutor.forks[0], { id: "F1", section: "§2.2", pick: "Distributed", paper: "Distributed", properties: ["P1", "P5"] });
+  assert.deepEqual(d.tutor.forks[0], { id: "F1", section: "§2.2", pick: "Distributed", paper: "Distributed", properties: ["P1", "P5"], paperProperties: ["P1", "P5"] });
+  assert.deepEqual(d.tutor.forks[3].paperProperties, ["P5", "P4"], "CONGA Fig 1 answer key, from path/model.js");
   assert.equal(d.tutor.forks[1].pick, null);
   assert.deepEqual(d.lab.fig2.map((r) => [r.label, r.predicted, r.result]), [["ECMP", 95, 90], ["Local only", 85, 80], ["CONGA", 100, 100]], "CONGA §2.4, Fig 2: 90 / 80 / 100");
   assert.equal(d.lab.fig2Why, "TCP slows the lower path.");
@@ -188,4 +191,13 @@ test("send: no key configured, or the honeypot filled: nothing is sent", async (
   r = await send({ ...payload({ key: "k", ...good, summary: "" }), botcheck: true }, f);
   assert.equal(r.ok, false);
   assert.equal(f.calls.length, 0);
+});
+
+test("collect: the tutor opening by itself (no answer, no message) is 'Path to CONGA: not started'", () => {
+  const opened = T.start(T.initialState("sid-2"), "live"); // what every page load does
+  const d = collect((k, fallback = null) => (k === T.STORE_KEY ? opened : fallback));
+  assert.equal(d.tutor, null);
+  assert.match(buildSummary(d), /^Path to CONGA: not started$/m);
+  const said = T.addStudent(opened, "I'd pick Distributed.");
+  assert.notEqual(collect((k, fallback = null) => (k === T.STORE_KEY ? said : fallback)).tutor, null, "one message = started");
 });

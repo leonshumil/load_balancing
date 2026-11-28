@@ -16,4 +16,4 @@ export function tutorUrl(hostname = globalThis.location?.hostname ?? "") {
 }
 
 /** Submit (step 07) emails Leon through Web3Forms (https://web3forms.com). Empty = sending is off. */
-export const WEB3FORMS_KEY = "";
+export const WEB3FORMS_KEY = "acfe574c-e426-4147-8cd4-cec8dda50fde";
