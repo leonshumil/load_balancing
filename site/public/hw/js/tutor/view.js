@@ -153,7 +153,7 @@ export function initTutor({ root, badge, progress }) {
     chipRow(branches, f.options.map((o) => ({ id: o.id, label: o.label })), {
       selected: fb.pick, label: "Your branch", onSelect: (id) => { fb.pick = id; refresh(); renderTreePane(); },
     });
-    const props = h("div", { class: "chips", role: "group", "aria-label": "Properties that support your branch (1 to 3)" },
+    const props = h("div", { class: "chips prop-pick", role: "group", "aria-label": "Properties that support your branch (1 to 3)" },
       ...PROPERTIES.map((p) => {
         const b = h("button", { class: "chip", type: "button", "aria-pressed": String(fb.props.has(p.id)), title: p.name }, h("span", {}, p.id), h("span", { class: "chip-sub" }, p.name));
         b.addEventListener("click", () => {
