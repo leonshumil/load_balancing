@@ -1,0 +1,77 @@
+/* Design tokens: the only file that holds raw colors.
+   Dark dashboard look (docs/design-ref.png): rounded panels, one violet and one gold accent.
+   Dark is the default; [data-theme="light"] is a readable light variant. */
+
+:root,
+[data-theme="dark"] {
+  --bg: #0A0A0C;
+  --panel: #16151B;
+  --panel-grad: #1D1628;      /* panels fade toward this at the bottom */
+  --panel-raised: #1F1D26;    /* chips, rail buttons, inputs on a panel */
+  --border: #24222C;
+  --text: #F4F4F6;
+  --muted: #8B8A96;
+  --violet: #8B5CF6;          /* lines, fills, CONGA's path, primary buttons */
+  --violet-soft: #A78BFA;
+  --violet-fill: rgba(139, 92, 246, 0.22);  /* area-chart fill, current rail item */
+  --lavender: #E6DAFE;        /* selected chip */
+  --lavender-ink: #1B1530;    /* text on lavender */
+  --gold: #F5C542;            /* second series, minute badges, highlights */
+  --gold-ink: #1A1405;        /* text on gold */
+  --ok: #22C55E;
+  --bad: #F43F5E;
+  --on-accent: #FFFFFF;       /* text on violet */
+
+  color-scheme: dark;
+}
+
+[data-theme="light"] {
+  --bg: #F4F3F8;
+  --panel: #FFFFFF;
+  --panel-grad: #F3EEFD;
+  --panel-raised: #F1EFF6;
+  --border: #E3E0EC;
+  --text: #16151B;
+  --muted: #64626F;
+  --violet: #7C3AED;
+  --violet-soft: #8B5CF6;
+  --violet-fill: rgba(124, 58, 237, 0.14);
+  --lavender: #E6DAFE;
+  --lavender-ink: #1B1530;
+  --gold: #F5C542;
+  --gold-ink: #1A1405;
+  --ok: #15803D;
+  --bad: #E11D48;
+  --on-accent: #FFFFFF;
+
+  color-scheme: light;
+}
+
+:root {
+  /* shape */
+  --radius: 20px;      /* panels */
+  --radius-md: 14px;   /* chips, cards inside panels */
+  --radius-sm: 10px;   /* buttons, inputs */
+
+  /* type */
+  --font: "Montserrat", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace;
+
+  /* reading "paper" cards (same in both themes) */
+  --paper: #FFFEF6;
+  --paper-ink: #141414;
+  --paper-muted: #77756C;
+  --paper-rule: #D9D6C6;
+  --paper-accent: #2F8F6B;
+  --paper-shadow: rgba(0, 0, 0, 0.22);
+  --backdrop: rgba(5, 5, 8, 0.74);   /* dim layer behind a zoomed passage */
+  --highlight: #FFE27A;
+  --tape: rgba(240, 205, 90, 0.62);
+  --font-serif: "STIX Two Text", "Latin Modern Roman", "Times New Roman", Times, serif;
+
+  /* layout */
+  --rail-w: 72px;
+  --side-w: 300px;
+  --main-max: 880px;
+  --gap: 24px;
+}

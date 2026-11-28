@@ -1,0 +1,205 @@
+/* Shared components. Later steps use these instead of adding new styles.
+   See shared/ui-demo.html for every component on one page.
+   Colors come only from tokens.css.
+
+   .panel            rounded panel with a faint violet fade toward the bottom
+   .chips / .chip    pill chip row; the selected chip (aria-pressed="true") is lavender
+   .badge            small pill: .badge-gold (minutes, timers), .badge-violet
+   .btn              buttons: .btn-primary (violet), .btn-ghost
+   .check-result     answer feedback: .is-ok (green) / .is-bad (red)
+   .dot-grid / .dot  flows on a link: .dot (violet), .dot-gold, .dot-ring
+   .area-chart       SVG area chart: .area (violet fill), .line, .compare (dashed gold)
+   .summary-card     gradient card (violet to gold) for the final score
+   .slot             empty placeholder a later step fills
+*/
+
+/* ---------- panel ---------- */
+
+.panel {
+  background: linear-gradient(180deg, var(--panel) 55%, var(--panel-grad) 100%);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: clamp(18px, 3vw, 28px);
+  min-width: 0;
+}
+.panel-inset {
+  background: var(--panel-raised);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+}
+
+/* ---------- chips ---------- */
+
+.chips {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 2px;
+  margin: 0;
+  list-style: none;
+}
+.chips::-webkit-scrollbar { display: none; }
+
+.chip {
+  flex: 0 0 auto;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 64px;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  background: var(--panel-raised);
+  color: var(--text);
+  font: 600 0.9rem/1.2 var(--font);
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+}
+.chip:hover { border-color: var(--border); color: var(--text); }
+.chip .chip-sub { font-size: 0.72rem; font-weight: 400; color: var(--muted); }
+.chip[aria-pressed="true"],
+.chip.is-selected {
+  background: var(--lavender);
+  color: var(--lavender-ink);
+}
+.chip[aria-pressed="true"] .chip-sub,
+.chip.is-selected .chip-sub { color: var(--lavender-ink); opacity: 0.75; }
+.chip.is-done::after {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ok);
+  margin-top: 2px;
+}
+
+/* ---------- badges ---------- */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font: 600 0.75rem/1.4 var(--font);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  background: var(--panel-raised);
+  color: var(--text);
+}
+.badge-gold { background: var(--gold); color: var(--gold-ink); }
+.badge-violet { background: var(--violet); color: var(--on-accent); }
+
+/* ---------- buttons ---------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0.75rem 1.25rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--panel-raised);
+  color: var(--text);
+  font: 600 0.95rem/1 var(--font);
+  cursor: pointer;
+  text-decoration: none;
+}
+.btn:hover { border-color: var(--muted); }
+.btn-primary { background: var(--violet); border-color: var(--violet); color: var(--on-accent); }
+.btn-primary:hover { background: var(--violet); border-color: var(--violet); filter: brightness(1.12); } /* same token as at rest (a hovered Send looked pink) */
+.btn-ghost { background: none; }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* ---------- check result ---------- */
+
+.check-result {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  font-size: 0.92rem;
+}
+.check-result::before {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font: 700 0.75rem/1 var(--font);
+  color: var(--bg);
+  margin-top: 1px;
+}
+.check-result.is-ok { border-color: var(--ok); }
+.check-result.is-ok::before { content: "\2713"; background: var(--ok); }
+.check-result.is-bad { border-color: var(--bad); }
+.check-result.is-bad::before { content: "\2715"; background: var(--bad); }
+
+/* ---------- dot grid ---------- */
+
+.dot-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-width: 100%;
+}
+.dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--violet);
+}
+.dot-gold { background: var(--gold); }
+.dot-ring { background: none; box-shadow: inset 0 0 0 2px var(--gold); }
+.dot-empty { background: none; box-shadow: inset 0 0 0 1px var(--border); }
+
+/* ---------- area chart (SVG drawn by ui.js areaChart) ---------- */
+
+.area-chart { width: 100%; height: auto; display: block; overflow: visible; }
+.area-chart .area { fill: var(--violet-fill); }
+.area-chart .line { fill: none; stroke: var(--violet); stroke-width: 2; }
+.area-chart .compare { fill: none; stroke: var(--gold); stroke-width: 2; stroke-dasharray: 5 5; }
+.area-chart .grid { stroke: var(--border); stroke-width: 1; }
+.area-chart text { fill: var(--muted); font: 500 11px var(--font); font-variant-numeric: tabular-nums; }
+
+.legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 0.8rem; color: var(--muted); margin: 8px 0 0; padding: 0; list-style: none; }
+.legend li { display: inline-flex; align-items: center; gap: 6px; }
+.legend .key { width: 16px; height: 0; border-top: 2px solid var(--violet); }
+.legend .key-compare { border-top: 2px dashed var(--gold); }
+
+/* ---------- summary card ---------- */
+
+.summary-card {
+  border-radius: var(--radius);
+  padding: 22px 24px;
+  background: linear-gradient(135deg, var(--violet) 0%, var(--violet-soft) 45%, var(--gold) 100%);
+  color: var(--gold-ink);
+  text-align: center;
+}
+.summary-card .value { font-size: clamp(2.4rem, 7vw, 3.4rem); font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+.summary-card .caption { margin-top: 6px; font-weight: 600; font-size: 0.85rem; }
+
+/* ---------- empty slot ---------- */
+
+.slot {
+  display: grid;
+  place-items: center;
+  min-height: 7rem;
+  padding: 1.25rem;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-md);
+  color: var(--muted);
+  font-size: 0.875rem;
+  text-align: center;
+}
+.slot-tall { min-height: 15rem; }
+.slot-video { aspect-ratio: 16 / 9; min-height: 0; }
+.slot + .slot { margin-top: 12px; }

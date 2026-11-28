@@ -1,0 +1,62 @@
+name: Deploy site to Pages
+
+on:
+  push:
+    branches: [main, dev]
+    paths: ["site/public/**", ".github/workflows/pages.yml", "tools/stamp-build.sh"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      # Every run rebuilds the whole site from both branches, whichever one was
+      # pushed: / is always main (live), /preview/ is always dev (shared work
+      # in progress), so one person's push never replaces the other's preview.
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          path: main-src
+      - uses: actions/checkout@v4
+        with:
+          ref: dev
+          path: dev-src
+      - name: Assemble site
+        run: |
+          mkdir -p _site/preview
+          if [ -d main-src/site/public ]; then
+            cp -r main-src/site/public/. _site/
+          else
+            # main has no site yet: keep / valid and point to the preview.
+            printf '<!doctype html><meta charset="utf-8"><title>Not live yet</title><p>Not live yet. See <a href="preview/">the preview</a>.</p>\n' > _site/index.html
+          fi
+          cp -r dev-src/site/public/. _site/preview/
+      - name: Stamp builds (footer + cache-busting ?v=<commit>)
+        run: |
+          stamp=dev-src/tools/stamp-build.sh
+          dev=$(git -C dev-src rev-parse --short HEAD)
+          bash "$stamp" _site/preview "dev · $dev" "$dev"
+          if [ -d main-src/site/public ]; then
+            main=$(git -C main-src rev-parse --short HEAD)
+            tmp=$(mktemp -d); mv _site/preview "$tmp/preview"
+            bash "$stamp" _site "main · $main" "$main"
+            mv "$tmp/preview" _site/preview
+          fi
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4

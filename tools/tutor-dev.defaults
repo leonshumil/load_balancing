@@ -1,0 +1,5 @@
+# Non-secret defaults for local tutor runs (tools/tutor-dev.sh). Loaded before
+# supabase/functions/.env, so anything set there wins. No keys in this file.
+TUTOR_MODEL=openai/gpt-oss-120b
+TUTOR_REASONING_EFFORT=low
+TUTOR_MODEL_FALLBACK=openai/gpt-oss-20b
