@@ -71,7 +71,9 @@ export function renderTree(host, view, { onNode, canAsk } = {}) {
   if (current.length) {
     const xs = current.map((id) => POS[id][0]);
     const cy = POS[current[0]][1];
-    el("rect", { x: Math.max(2, Math.min(...xs) - 70), y: cy - 20, width: Math.min(W - 4, Math.max(...xs) - Math.min(...xs) + 140), height: 56, rx: 12, class: "fig1-band" }, edges.parentNode.insertBefore(el("g", { class: "fig1-bands" }), edges));
+    const left = Math.max(2, Math.min(...xs) - 70);
+    const right = Math.min(W - 2, Math.max(...xs) + 70);
+    el("rect", { x: left, y: cy - 20, width: right - left, height: 56, rx: 12, class: "fig1-band" }, edges.parentNode.insertBefore(el("g", { class: "fig1-bands" }), edges));
   }
 
   const nodes = el("g", { class: "fig1-nodes" }, svg);
