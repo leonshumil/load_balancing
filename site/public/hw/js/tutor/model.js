@@ -68,27 +68,22 @@ export function start(state, mode, offline = null) {
 
 export const goOffline = (state, reason) => ({ ...clone(state), mode: "fallback", offline: reason });
 
-// A branch is "named" by the head of its label ("Global" for "Global, Congestion-Aware", "Local" for
-// "Local (Stateless or ...)"), as whole words, any case; "-" and spaces are interchangeable.
-const branchPattern = (label) => {
-  const head = label.split(/[,(]/)[0].trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/[-\s]+/g, "[-\\s]+");
-  return new RegExp(`(^|[^\\w])${head}(?![\\w])`, "i");
-};
+/** The text a quick-reply chip sends for a branch (the view uses it too). */
+export const quickReplyText = (label) => `I'd pick ${label}.`;
 
 /**
- * The branch the student already chose in the current fork, so guided mode can preselect it after
- * the tutor fails (e.g. a quick reply "I'd pick Distributed."). The tutor's detected pick wins;
- * otherwise the latest of this fork's messages that names exactly one branch. null = no guess.
+ * The branch the student chose with a quick reply on the current fork, so guided mode can preselect
+ * it after the tutor fails. Only quick replies count: free text and the tutor's detected pick don't
+ * (a sentence that merely mentions "per flow" must not preselect Per Flow). null = no guess.
  */
 export function guidedPick(state) {
   const id = currentForkId(state);
   if (!id) return null;
   const options = forkById(id).options;
-  if (options.some((o) => o.id === state.forks[id].pick)) return state.forks[id].pick;
   const mine = state.messages.filter((m) => m.role === "student" && m.fork === id);
   for (const m of mine.reverse()) {
-    const named = options.filter((o) => branchPattern(o.label).test(m.text));
-    if (named.length === 1) return named[0].id;
+    const o = options.find((x) => m.text.trim() === quickReplyText(x.label));
+    if (o) return o.id;
   }
   return null;
 }
