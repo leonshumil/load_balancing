@@ -17,13 +17,8 @@
 /* ---------- reading passages (section 1) ----------
    Paper cards like the reference site: cream sheet, serif body, yellow highlights,
    tape strip on top, small mono caption. Paper colors live in tokens.css. */
-/* masonry: two CSS columns, so cards of different heights leave no holes (1-3 left, 4-6 right) */
-.reading { display: grid; gap: 30px 24px; align-items: start; padding-top: 12px; }
-@media (min-width: 1000px) {
-  .reading { display: block; column-count: 2; column-gap: 24px; }
-  .reading > * { break-inside: avoid; margin: 0 0 30px; }
-  .reading > .passage { display: inline-block; width: 100%; vertical-align: top; }
-}
+/* one centered reading column (~760px): passages read 1 to 6 top to bottom, like the paper */
+.reading { display: grid; grid-template-columns: minmax(0, 760px); justify-content: center; gap: 30px; align-items: start; padding-top: 12px; }
 
 .passage {
   position: relative;
