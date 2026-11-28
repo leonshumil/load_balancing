@@ -238,6 +238,20 @@ export function steps(s) {
 export const isDone = (s) => Object.values(steps(s)).every(Boolean);
 
 /** The paths a demand uses in a scenario (for the drawing and the weight sliders). */
+/**
+ * The selected demand's split, as shares of what it delivers: "Upper path (S0) 67% · lower path (S1) 33%"
+ * for two paths (drawn top and bottom), "S0 33% · S1 33% · S2 33%" for more, "One path (S0)" for one.
+ */
+export function pathSplitLine(s, scenario, scheme) {
+  const P = demandPaths(s, scenario, s.selected);
+  if (P.length === 1) return `One path (${P[0]})`;
+  const rates = results(s, scenario)[scheme]?.result.perDemand[s.selected]?.rates ?? {};
+  const total = P.reduce((a, p) => a + (rates[p] ?? 0), 0);
+  const pct = (p) => `${total > 0 ? Math.round(((rates[p] ?? 0) / total) * 100) : 0}%`;
+  if (P.length === 2) return `Upper path (${P[0]}) ${pct(P[0])} · lower path (${P[1]}) ${pct(P[1])}`;
+  return P.map((p) => `${p} ${pct(p)}`).join(" · ");
+}
+
 export function demandPaths(s, scenario, i) {
   const { net, demands } = effective(s, scenario);
   const d = demands[i];

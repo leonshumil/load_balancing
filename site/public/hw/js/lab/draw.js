@@ -3,7 +3,7 @@
 // right; a leaf that both sends and receives appears on both sides (the "unfolded" fabric).
 // Left links are uplinks (leaf->spine), right links downlinks (spine->leaf).
 // Link thickness = load; label "load / capacity"; a full link turns gold and says "full";
-// failed (0) is dashed. The selected demand's paths are violet with their share. Small dots
+// failed (0) is dashed. The selected demand's paths are violet (shares in the results card). Small dots
 // move along loaded links at a speed that follows the throughput (none with reduced motion).
 // The SVG is built once per topology and then updated, so loads animate (CSS, ~400 ms).
 // Styles in hw.css (tokens only).
@@ -126,11 +126,9 @@ export function createFabric(host, { onLink, onSelectSource } = {}) {
       else { g.removeAttribute("role"); g.removeAttribute("tabindex"); g.classList.remove("is-clickable"); }
     }
     for (const [n, g] of Object.entries(b.nodes.R)) g.classList.toggle("is-dst", !!d && n === d.dst);
-    // the selected demand's paths, with their shares
+    // the selected demand's paths (their shares are in the results card)
     b.gPaths.replaceChildren();
     if (d && b.pos.L[d.src] && b.pos.R[d.dst]) {
-      const rates = result?.perDemand[selected]?.rates ?? {};
-      const total = Object.values(rates).reduce((a, x) => a + x, 0);
       const ok = net.spines.filter((s) => (net.cap[`${d.src}>${s}`] ?? 0) > 0 && (net.cap[`${s}>${d.dst}`] ?? 0) > 0 && (!focusSpines || focusSpines.has(s)));
       for (const s of ok) {
         const [sx, sy] = b.pos.L[d.src];
@@ -138,10 +136,6 @@ export function createFabric(host, { onLink, onSelectSource } = {}) {
         const [dx, dy] = b.pos.R[d.dst];
         const kind = !focus ? "" : focus.solid.includes(s) ? " is-solid" : " is-dashed";
         el("polyline", { points: `${sx + 19},${sy} ${mx},${my} ${dx - 19},${dy}`, class: `fabric-path${kind}` }, b.gPaths);
-        if (result) {
-          const share = total > 0 ? Math.round(((rates[s] ?? 0) / total) * 100) : 0;
-          el("text", { x: mx, y: my - 25, class: "fabric-share", "text-anchor": "middle" }, b.gPaths).textContent = `${fmt(rates[s] ?? 0)}G · ${share}%`;
-        }
       }
     }
     // moving dots: speed follows the throughput on the link

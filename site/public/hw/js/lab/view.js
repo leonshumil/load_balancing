@@ -206,11 +206,13 @@ export function initLab({ root, progress }) {
     if (!vis.has(k)) { fill(card, split, pred ?? h("p", { class: "lab-card-hidden" }, "Lock your split to see the other schemes.")); return; }
     const r = R[k];
     const paper = R.paper[k];
+    const d = L.effective(s).demands[s.selected];
     fill(card,
       h("p", { class: "label" }, `${k === "weighted" ? "Weighted (WCMP)" : L.SCHEME_LABEL[k]} delivers`),
       h("div", { class: "lab-big" }, h("span", { class: "lab-big-num" }, fmt(r.total)), h("span", { class: "lab-big-of" }, ` / ${fmt(r.demand)} Gbps`),
         paper != null ? h("span", { class: "badge badge-gold" }, `${paper} · paper`) : null),
       h("p", { class: "lab-why" }, L.whyLine(s, s.scenario, k)),
+      d ? h("p", { class: "lab-paths" }, `${d.src}→${d.dst}: ${L.pathSplitLine(s, s.scenario, k)}`) : null,
       h("p", { class: "lab-util" }, `Busiest link ${pct(r.maxUtil)}`, k === "conga" ? " · what CONGA minimizes" : "", r.swing ? ` · swings ${fmt(r.swing[0])}–${fmt(r.swing[1])}` : ""),
       split,
       bars(R, vis),
