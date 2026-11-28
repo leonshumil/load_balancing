@@ -439,3 +439,6 @@ textarea.input { resize: vertical; width: 100%; }
 .lab-table tr.is-selected td { background: var(--violet-fill); }
 .lab-del { padding: 0.4rem 0.7rem; font-size: 0.8rem; }
 @media (prefers-reduced-motion: reduce) { .fabric-line, .lab-bar-fill { transition: none; } }
+
+/* sections not built yet (Questions: step 09, Submit: step 07) */
+.coming-soon { margin: 0; padding: 14px 18px; border: 1px dashed var(--border); border-radius: var(--radius-md); color: var(--muted); }
