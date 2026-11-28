@@ -45,12 +45,14 @@ export function collect(get) {
   let tutor = null;
   if (tutorRaw) {
     const s = T.restore(tutorRaw, () => "x");
-    if (s.mode) {
+    // every page load opens the tutor; it counts as started once the student has said or chosen something
+    const started = s.messages.some((m) => m.role === "student") || FORKS.some((f) => s.forks[f.id].pick || s.forks[f.id].revealed);
+    if (s.mode && started) {
       tutor = {
         mode: s.mode,
         forks: FORKS.map((f) => {
           const fs = s.forks[f.id];
-          return { id: f.id, section: f.section, pick: label(fs.pick), paper: label(f.congaPick), properties: [...fs.properties] };
+          return { id: f.id, section: f.section, pick: label(fs.pick), paper: label(f.congaPick), properties: [...fs.properties], paperProperties: [...f.properties] };
         }),
       };
     }
@@ -87,8 +89,8 @@ export function buildSummary(d) {
     lines.push(`Path to CONGA (${d.tutor.mode === "live" ? "with the tutor" : "guided mode"}):`);
     for (const f of d.tutor.forks) {
       lines.push(f.pick
-        ? `- ${f.id} (${f.section}): ${f.pick} (paper: ${f.paper})${f.properties.length ? ` · ${f.properties.join(", ")}` : ""}`
-        : `- ${f.id} (${f.section}): not reached`);
+        ? `- ${f.id}: ${f.pick} (paper: ${f.paper}) · you: ${f.properties.join(", ") || "–"} · paper: ${f.paperProperties.join(", ")}`
+        : `- ${f.id}: not reached`);
     }
   }
   lines.push("");
