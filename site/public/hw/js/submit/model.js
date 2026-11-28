@@ -60,6 +60,9 @@ export function collect(get) {
   let lab = null;
   if (labRaw) {
     const s = L.restore(labRaw);
+    // every page load saves a fresh lab state; it counts as started once the student predicted or wrote something
+    const started = Object.keys(s.predictions).length > 0 || Object.keys(s.revealed).length > 0 || Object.values(s.answers).some((a) => String(a ?? "").trim());
+    if (started) {
     const R = L.results(s, "fig2");
     lab = {
       fig2: ["ecmp", "localOnly", "conga"].map((k) => ({
@@ -70,6 +73,7 @@ export function collect(get) {
       fig2Why: s.answers.fig2Why ?? "",
       whyNot: s.answers.whyNot ?? "",
     };
+    }
   }
   return {
     done: Array.isArray(done) ? done.length : 0,
@@ -96,12 +100,16 @@ export function buildSummary(d) {
   lines.push("");
   if (!d.lab) lines.push("Lab: not started");
   else {
-    lines.push("Lab, Figure 2 (prediction vs result, Gbps):");
-    for (const r of d.lab.fig2) lines.push(`- ${r.label}: you ${r.predicted ?? "–"}, result ${r.result ?? "–"}`);
-    lines.push(`Why is local only worse? ${clip(d.lab.fig2Why, 450) || "–"}`);
-    lines.push(`Why not? ${clip(d.lab.whyNot, 450) || "–"}`);
+    // a step not done is one line; empty answers are left out
+    if (d.lab.fig2.every((r) => r.result == null)) lines.push("Lab, Figure 2: not checked yet");
+    else {
+      lines.push("Lab, Figure 2 (prediction vs result, Gbps):");
+      for (const r of d.lab.fig2) lines.push(`- ${r.label}: you ${r.predicted ?? "no guess"}, result ${r.result}`);
+    }
+    if (clip(d.lab.fig2Why, 450)) lines.push(`Why is local only worse? ${clip(d.lab.fig2Why, 450)}`);
+    if (clip(d.lab.whyNot, 450)) lines.push(`Why not? ${clip(d.lab.whyNot, 450)}`);
   }
-  if (d.questions) lines.push("", `Questions: ${d.questions.firstTry}/${d.questions.total} right on the first try`);
+  lines.push("", d.questions ? `Questions: ${d.questions.firstTry}/${d.questions.total} right on the first try` : "Questions: not started");
   const text = lines.join("\n");
   return text.length <= SUMMARY_MAX ? text : `${text.slice(0, SUMMARY_MAX - 1)}…`;
 }
