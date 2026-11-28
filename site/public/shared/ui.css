@@ -112,7 +112,7 @@
 }
 .btn:hover { border-color: var(--muted); }
 .btn-primary { background: var(--violet); border-color: var(--violet); color: var(--on-accent); }
-.btn-primary:hover { background: var(--violet-soft); border-color: var(--violet-soft); }
+.btn-primary:hover { background: var(--violet); border-color: var(--violet); filter: brightness(1.12); } /* same token as at rest (a hovered Send looked pink) */
 .btn-ghost { background: none; }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
