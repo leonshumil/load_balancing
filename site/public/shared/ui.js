@@ -116,24 +116,36 @@ export function summaryCard(container, { value, caption }) {
 }
 
 /**
- * Scroll spy: marks the link of the section being read with aria-current="true".
- * The current section is the last one whose top has passed a line `line` px from
- * the top of the viewport (capped at 35% of its height). At the very bottom of the
- * page, a section named in the URL hash wins (short last sections can't scroll up).
+ * Which section is current: the last one whose top has passed `line` (px from the viewport top).
+ * Scrolled to the very bottom, the last section is current (it can never reach the line), unless a
+ * section named in the URL hash is on screen (a click on a short section's rail icon). Pure.
+ */
+export function currentSection({ ids, tops, line, atBottom, hash, inView }) {
+  let id = ids[0] ?? null;
+  ids.forEach((x, i) => { if (tops[i] <= line) id = x; });
+  if (atBottom) id = ids.includes(hash) && inView(hash) ? hash : ids.at(-1);
+  return id;
+}
+
+/**
+ * Scroll spy: marks the link of the section being read with aria-current="true" (see currentSection).
  * links: Map(sectionId -> element).
  */
 export function scrollSpy(links, { line = 140 } = {}) {
   const sections = [...links.keys()].map((id) => document.getElementById(id)).filter(Boolean);
+  const ids = sections.map((s) => s.id);
   let current = null;
   let queued = false;
   const update = () => {
     queued = false;
-    const y = Math.min(line, innerHeight * 0.35);
-    let id = sections[0]?.id ?? null;
-    for (const s of sections) if (s.getBoundingClientRect().top <= y) id = s.id;
-    const atBottom = innerHeight + scrollY >= document.documentElement.scrollHeight - 2;
-    const hashId = decodeURIComponent(location.hash.slice(1));
-    if (atBottom && links.has(hashId)) id = hashId;
+    const id = currentSection({
+      ids,
+      tops: sections.map((s) => s.getBoundingClientRect().top),
+      line: Math.min(line, innerHeight * 0.35),
+      atBottom: innerHeight + scrollY >= document.documentElement.scrollHeight - 2,
+      hash: decodeURIComponent(location.hash.slice(1)),
+      inView: (x) => { const r = document.getElementById(x)?.getBoundingClientRect(); return !!r && r.bottom > 0 && r.top < innerHeight; },
+    });
     if (id === current) return;
     current = id;
     for (const [key, a] of links) {

@@ -66,17 +66,19 @@ test("buildSummary: progress, Path to CONGA per fork, Lab Fig 2 vs results and b
   assert.match(t, /^- F3: not reached$/m);
   assert.match(t, /^- F4: Leaf to Leaf \(paper: Leaf to Leaf\) · you: – · paper: P5, P4$/m, "no properties named");
   assert.match(t, /ECMP: you 95, result 90/);
-  assert.match(t, /CONGA: you –, result 100/);
+  assert.match(t, /CONGA: you no guess, result 100/);
   assert.match(t, /Why is local only worse\? TCP slows the lower path/);
   assert.match(t, /Why not\? Stale feedback/);
-  assert.doesNotMatch(t, /Questions/, "skipped while step 09 isn't built");
+  assert.match(t, /^Questions: not started$/m, "one line while step 09 isn't built");
 });
 
 test("buildSummary: nothing done yet still gives a readable summary", () => {
   const t = buildSummary({ done: 0, total: 5, seconds: 0, tutor: null, lab: null, questions: null });
   assert.match(t, /Sections done: 0\/5 · active time: 0 min/);
-  assert.match(t, /Path to CONGA: not started/);
-  assert.match(t, /Lab: not started/);
+  assert.match(t, /^Path to CONGA: not started$/m);
+  assert.match(t, /^Lab: not started$/m);
+  assert.match(t, /^Questions: not started$/m);
+  assert.doesNotMatch(t, /–/, "no rows of dashes");
 });
 
 test("buildSummary: a questions score appears once that section exists", () => {
@@ -200,4 +202,25 @@ test("collect: the tutor opening by itself (no answer, no message) is 'Path to C
   assert.match(buildSummary(d), /^Path to CONGA: not started$/m);
   const said = T.addStudent(opened, "I'd pick Distributed.");
   assert.notEqual(collect((k, fallback = null) => (k === T.STORE_KEY ? said : fallback)).tutor, null, "one message = started");
+});
+
+// review-2 P1-2: a section not done is one line, not rows of "you –, result –"
+test("collect: the lab opened but untouched is 'Lab: not started'; Fig 2 not checked is one line; empty answers are left out", () => {
+  const get = (lab) => (k, fallback = null) => (k === L.STORE_KEY ? lab : fallback);
+  assert.equal(collect(get(L.initialState())).lab, null, "page load saves a fresh lab state: not started");
+  let lab = L.predict(L.initialState(), "fig2", "ecmp", 90);
+  const t = buildSummary(collect(get(lab)));
+  assert.match(t, /^Lab, Figure 2: not checked yet$/m);
+  assert.doesNotMatch(t, /you –|result –|Why is local only worse\? –|Why not\? –/);
+  lab = L.setAnswer(L.showEcmpWins(L.initialState(), "fig17"), "whyNot", "Stale feedback makes the leaves herd together.");
+  assert.match(buildSummary(collect(get(lab))), /^Why not\? Stale feedback/m);
+});
+
+// review-2 P1-3: a soft note above Send, never a block
+import { progressNote } from "./model.js";
+test("progressNote: a soft note while fewer than all sections are done; none when all are", () => {
+  assert.equal(progressNote(2, 5), "You've finished 2 of 5 sections. You can still send.");
+  assert.equal(progressNote(0, 5), "You've finished 0 of 5 sections. You can still send.");
+  assert.equal(progressNote(1, 5), "You've finished 1 of 5 sections. You can still send.");
+  assert.equal(progressNote(5, 5), null);
 });
