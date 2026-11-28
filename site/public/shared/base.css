@@ -1,4 +1,4 @@
-/* Page frame: app grid (icon rail | main | right column), section headers,
+/* Page frame: app grid (icon rail | main), section headers,
    reading-progress line. Components (panels, chips, badges, ...) are in ui.css.
    Colors come only from tokens.css. */
 
@@ -55,72 +55,32 @@ h3 { font-size: 1.1rem; }
 
 /* ---------- app grid ---------- */
 
+/* Two columns: the icon rail (navigation, done dots, "x/5 · time" at its foot) and one main column.
+   Desktop (≥1200px): the main column is wide (up to ~1400px) and never changes width while scrolling. */
 .app {
   display: grid;
-  grid-template-columns: var(--rail-w) minmax(0, 1fr) var(--side-w);
+  grid-template-columns: var(--rail-w) minmax(0, 1fr);
   grid-template-areas:
-    "rail intro side"
-    "rail main  side";
+    "rail intro"
+    "rail main";
   grid-template-rows: auto 1fr;
   column-gap: var(--gap);
-  max-width: calc(var(--rail-w) + var(--main-max) + var(--side-w) + 2 * var(--gap) + 48px);
+  max-width: calc(var(--rail-w) + var(--main-max) + var(--gap) + 48px);
   margin: 0 auto;
   padding: 24px;
 }
 .intro { grid-area: intro; }
 .main  { grid-area: main; display: grid; gap: var(--gap); align-content: start; min-width: 0; }
-.side  { grid-area: side; }
 .rail  { grid-area: rail; }
 
-.side > * { position: sticky; top: 24px; }
-
-/* Desktop (≥1200px): one width for every section. The main column is wide (up to ~1400px)
-   and the progress panel stays folded into a thin strip of section numbers on the right; it
-   expands over the page on hover, focus or its toggle. Nothing changes width while scrolling. */
-.side-toggle { display: none; }
 @media (min-width: 1200px) {
-  :root { --side-w: 44px; --main-max: 1400px; }
-  .side { position: relative; z-index: 30; }
-  .side .progress-panel { transition: width 0.25s ease, margin-left 0.25s ease, padding 0.25s ease; }
-  .side-toggle {
-    display: grid; place-items: center; width: 30px; height: 30px; margin: 0 0 8px auto;
-    border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--panel-raised);
-    color: var(--muted); font: 600 1rem/1 var(--font); cursor: pointer;
-  }
-  /* folded: section numbers (green when done) and the count */
-  .side:not(:hover, :focus-within, .is-open) .progress-panel { width: 44px; padding: 8px 0; overflow: hidden; }
-  .side:not(:hover, :focus-within, .is-open) .side-toggle { margin: 0 auto 8px; }
-  .side:not(:hover, :focus-within, .is-open) :is(.progress-panel > h2, .progress-row a > span:not(.n), .progress-stats .stat:not(:first-child), .progress-stats .label) { display: none; }
-  .side:not(:hover, :focus-within, .is-open) .progress-row a { grid-template-columns: 1fr; padding: 7px 0; margin: 0 6px; }
-  .side:not(:hover, :focus-within, .is-open) .progress-row.is-done a { background: var(--ok); }
-  .side:not(:hover, :focus-within, .is-open) .progress-row.is-done .n { color: var(--bg); }
-  .side:not(:hover, :focus-within, .is-open) .progress-stats { display: block; text-align: center; margin-top: 8px; }
-  .side:not(:hover, :focus-within, .is-open) .progress-stats .value { font-size: 0.78rem; }
-  /* expanded: the normal panel, drawn over the main column */
-  .side:is(:hover, :focus-within, .is-open) .progress-panel { width: 300px; margin-left: -256px; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .side .progress-panel { transition: none; }
-}
-
-@media (max-width: 1199.98px) {
-  .app {
-    grid-template-columns: var(--rail-w) minmax(0, 1fr);
-    grid-template-areas:
-      "rail intro"
-      "rail side"
-      "rail main";
-    grid-template-rows: auto auto 1fr;
-    max-width: calc(var(--rail-w) + var(--main-max) + var(--gap) + 48px);
-  }
-  .side { margin-bottom: var(--gap); }
-  .side > * { position: static; }
+  :root { --main-max: 1400px; }
 }
 
 @media (max-width: 759.98px) {
   .app {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-areas: "intro" "side" "main";
+    grid-template-areas: "intro" "main";
     padding: 16px 14px calc(84px + env(safe-area-inset-bottom));
   }
 }
@@ -143,6 +103,9 @@ h3 { font-size: 1.1rem; }
 }
 .rail-links { display: flex; flex-direction: column; gap: 6px; list-style: none; margin: 0; padding: 0; }
 .rail-spacer { flex: 1; }
+.rail-stats { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 6px 0 4px; font-variant-numeric: tabular-nums; text-align: center; }
+.rail-count { font-weight: 700; font-size: 0.9rem; color: var(--text); }
+.rail-time { font-size: 0.7rem; color: var(--muted); white-space: nowrap; }
 
 .rail-btn {
   position: relative;
@@ -195,7 +158,7 @@ h3 { font-size: 1.1rem; }
     margin-bottom: 8px;
   }
   .rail-links { flex-direction: row; gap: 0; flex: 1; justify-content: space-between; }
-  .rail-spacer { display: none; }
+  .rail-spacer, .rail-stats { display: none; }
   .rail-btn { width: 40px; height: 44px; }
 }
 
@@ -213,55 +176,6 @@ h3 { font-size: 1.1rem; }
 .subtitle { margin: 0.45rem 0 0; color: var(--muted); }
 
 .part { scroll-margin-top: 16px; }
-
-/* ---------- side: progress panel ---------- */
-
-.progress-panel h2 { font-size: 1.25rem; margin-bottom: 0.9rem; }
-.progress-rows { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-.progress-row a {
-  display: grid;
-  grid-template-columns: 22px 1fr auto auto;
-  align-items: center;
-  gap: 10px;
-  padding: 9px 10px;
-  border-radius: var(--radius-md);
-  background: var(--panel-raised);
-  color: var(--text);
-  text-decoration: none;
-  font-size: 0.9rem;
-  font-weight: 600;
-}
-.progress-row a:hover { outline: 1px solid var(--border); }
-.progress-row .n { color: var(--muted); font-variant-numeric: tabular-nums; text-align: center; }
-.tick {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  border: 1.5px solid var(--muted);
-  opacity: 0.55;
-  display: grid;
-  place-items: center;
-}
-.tick svg { width: 12px; height: 12px; opacity: 0; }
-.is-done .tick { background: var(--ok); border-color: var(--ok); color: var(--bg); opacity: 1; }
-.is-done .tick svg { opacity: 1; }
-
-.progress-stats {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  margin-top: 14px;
-}
-.stat {
-  padding: 10px 12px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border);
-}
-.stat .value { font-size: 1.35rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.2; }
-
-@media (max-width: 1199.98px) {
-  .progress-rows { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
-}
 
 /* ---------- thin reading-progress line ---------- */
 

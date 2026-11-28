@@ -52,6 +52,10 @@
           <li><a class="rail-btn" href="#submit" data-section="submit" title="Submit" aria-label="Submit"><svg class="icon"><use href="#i-submit"/></svg></a></li>
         </ul>
         <div class="rail-spacer"></div>
+        <div class="rail-stats" title="Sections done · time spent">
+          <span class="rail-count" data-progress-count aria-label="Sections done">0/5</span>
+          <span class="rail-time" data-time-spent aria-label="Time spent">0 min</span>
+        </div>
         <button class="rail-btn theme-toggle" type="button" data-icon aria-label="Switch theme">
           <svg class="icon icon-sun"><use href="#i-sun"/></svg>
           <svg class="icon icon-moon"><use href="#i-moon"/></svg>
@@ -86,25 +90,6 @@
         </ol>
       </nav>
     </header>
-
-    <!-- ===================== right column: progress ===================== -->
-    <aside class="side" aria-label="Your progress">
-      <div class="panel progress-panel" id="progress-panel">
-        <button class="side-toggle" type="button" aria-expanded="false" aria-controls="progress-panel" aria-label="Show your progress" title="Show your progress">‹</button>
-        <h2>Your progress</h2>
-        <ol class="progress-rows">
-          <li class="progress-row" data-progress-for="read"><a href="#read"><span class="n">1</span><span>Read</span><span class="badge badge-gold">7 min</span><span class="tick"><svg><use href="#i-check"/></svg></span></a></li>
-          <li class="progress-row" data-progress-for="watch"><a href="#watch"><span class="n">2</span><span>Watch</span><span class="badge badge-gold">5 min</span><span class="tick"><svg><use href="#i-check"/></svg></span></a></li>
-          <li class="progress-row" data-progress-for="tutor"><a href="#tutor"><span class="n">3</span><span>Path to CONGA</span><span class="badge badge-gold">20 min</span><span class="tick"><svg><use href="#i-check"/></svg></span></a></li>
-          <li class="progress-row" data-progress-for="lab"><a href="#lab"><span class="n">4</span><span>Lab</span><span class="badge badge-gold">15 min</span><span class="tick"><svg><use href="#i-check"/></svg></span></a></li>
-          <li class="progress-row" data-progress-for="questions"><a href="#questions"><span class="n">5</span><span>Questions</span><span class="badge badge-gold">8 min</span><span class="tick"><svg><use href="#i-check"/></svg></span></a></li>
-        </ol>
-        <div class="progress-stats">
-          <div class="stat"><p class="label">Done</p><div class="value" data-progress-count>0/5</div></div>
-          <div class="stat"><p class="label">Time spent</p><div class="value" data-time-spent>0 min</div></div>
-        </div>
-      </div>
-    </aside>
 
     <!-- ===================== sections ===================== -->
     <main class="main">
