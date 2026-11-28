@@ -447,7 +447,7 @@ textarea.input { resize: vertical; width: 100%; }
 .lab-bar-val { text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; white-space: nowrap; }
 .lab-bar-you { color: var(--muted); font-weight: 500; }
 .lab-pred { display: flex; flex-direction: column; gap: 8px; }
-.lab-pred-row { display: grid; grid-template-columns: 1fr 84px auto; align-items: center; gap: 8px; font-size: 0.9rem; }
+.lab-pred-row { display: grid; grid-template-columns: 1fr 112px auto; align-items: center; gap: 8px; font-size: 0.9rem; }
 .lab-pred-unit { color: var(--muted); font-size: 0.8rem; }
 .lab-num { width: 100%; padding: 0.45rem 0.6rem; font-variant-numeric: tabular-nums; }
 .lab-num.is-missing { border-color: var(--bad); }
