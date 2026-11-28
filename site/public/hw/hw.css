@@ -448,6 +448,9 @@ textarea.input { resize: vertical; width: 100%; }
 .lab-pred-row { display: grid; grid-template-columns: 1fr 84px auto; align-items: center; gap: 8px; font-size: 0.9rem; }
 .lab-pred-unit { color: var(--muted); font-size: 0.8rem; }
 .lab-num { width: 100%; padding: 0.45rem 0.6rem; font-variant-numeric: tabular-nums; }
+.lab-num.is-missing { border-color: var(--bad); }
+.lab-pred-note { margin: 0; color: var(--bad); font-size: 0.85rem; }
+.lab-pred-note:empty { display: none; }
 .lab-split { display: flex; flex-direction: column; gap: 4px; }
 .lab-split-row { display: grid; grid-template-columns: 26px 1fr 26px; align-items: center; gap: 8px; font-size: 0.82rem; font-weight: 600; }
 .lab-split-val { color: var(--muted); font-size: 0.8rem; font-variant-numeric: tabular-nums; }
