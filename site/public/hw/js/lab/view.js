@@ -140,15 +140,21 @@ export function initLab({ root, progress }) {
     const vis = L.visibleSchemes(s);
     const { net, demands, base } = L.effective(s);
     const R = L.results(s);
+    // Fig 17: fade everything but the selected demand's paths; solid = CONGA's Nash flow, dashed = the
+    // better flow (the other paths ECMP also uses), as the paper draws it
+    const fig17 = s.scenario === "ecmpWins" && s.ecmpWinsView === "fig17";
+    const used = (k) => Object.keys(R[k].splits[s.selected] ?? {}).filter((sp) => R[k].splits[s.selected][sp] > 1e-6);
+    const focus = fig17 ? { solid: used("conga"), dashed: used("ecmp").filter((sp) => !used("conga").includes(sp)) } : null;
     fabric.update({
       net, baseNet: base.net, demands, selected: s.selected,
       result: vis.has(s.scheme) ? R[s.scheme].result : null,
       editable: L.canEdit(s), selectedLink: popLink, motion: !reduceMotion(),
-      canSwitch: demands.length > 1,
+      canSwitch: demands.length > 1, focus,
     });
     const d = demands[s.selected];
     graphHint.textContent = [
-      d ? `Violet: the paths of ${d.src}→${d.dst}${demands.length > 1 ? " (click a sender to show another demand)" : ""}.` : "",
+      d && fig17 ? `${d.src}→${d.dst} only (click a sender to show another demand). Solid: CONGA's Nash flow, via ${focus.solid.join(", ")}. Dashed: the better flow ECMP also uses, via ${focus.dashed.join(", ")}. Every other link is faded.` : "",
+      d && !fig17 ? `Violet: the paths of ${d.src}→${d.dst}${demands.length > 1 ? " (click a sender to show another demand)" : ""}.` : "",
       L.canEdit(s) ? "Click a link to change its capacity." : "",
     ].filter(Boolean).join(" ");
   }

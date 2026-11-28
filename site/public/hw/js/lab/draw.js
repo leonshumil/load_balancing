@@ -90,12 +90,17 @@ export function createFabric(host, { onLink, onSelectSource } = {}) {
 
   /**
    * opts: { net, baseNet, demands, selected, result (null hides the numbers), editable,
-   *         selectedLink, motion (dots on), canSwitch (several demands to show) }
+   *         selectedLink, motion (dots on), canSwitch (several demands to show),
+   *         focus: { solid: [spines], dashed: [spines] } (optional) }
+   * focus (Fig 17, where every leaf reaches every spine): only the selected demand's paths stay
+   * visible: solid = the Nash flow, dashed = the better flow, as in the paper; all else fades.
    */
-  function update({ net, baseNet, demands, selected, result, editable, selectedLink, motion, canSwitch }) {
+  function update({ net, baseNet, demands, selected, result, editable, selectedLink, motion, canSwitch, focus }) {
     const b = build(net, baseNet, demands);
     const d = demands[selected] ?? null;
     const onDemand = (x) => d && ((x.dir === "up" && x.from === d.src) || (x.dir === "down" && x.to === d.dst));
+    const focusSpines = focus ? new Set([...focus.solid, ...focus.dashed]) : null;
+    const inFocus = (x) => !focusSpines || (onDemand(x) && focusSpines.has(x.dir === "up" ? x.to : x.from));
     for (const x of b.links.values()) {
       const cap = net.cap[x.link] ?? 0;
       const load = result?.linkLoad[x.link] ?? 0;
@@ -107,7 +112,8 @@ export function createFabric(host, { onLink, onSelectSource } = {}) {
       x.g.classList.toggle("is-full", full);
       x.g.classList.toggle("is-selected", selectedLink === x.phys);
       x.g.classList.toggle("is-editable", !!editable);
-      const showLabel = !b.dense || onDemand(x) || selectedLink === x.phys;
+      x.g.classList.toggle("is-faded", !inFocus(x));
+      const showLabel = (!b.dense || onDemand(x) || selectedLink === x.phys) && inFocus(x);
       x.label.textContent = !showLabel ? "" : failed ? "failed" : result ? `${fmt(load)} / ${cap}${full ? " full" : ""}` : `${cap}G`;
       const desc = `${x.from}→${x.to}: ${failed ? "failed" : result ? `${fmt(load)} of ${cap} Gbps${full ? ", full" : ""}` : `${cap} Gbps`}`;
       x.title.textContent = editable ? `${desc}. Click to change the capacity of ${x.phys.replace("-", "–")}` : desc;
@@ -125,12 +131,13 @@ export function createFabric(host, { onLink, onSelectSource } = {}) {
     if (d && b.pos.L[d.src] && b.pos.R[d.dst]) {
       const rates = result?.perDemand[selected]?.rates ?? {};
       const total = Object.values(rates).reduce((a, x) => a + x, 0);
-      const ok = net.spines.filter((s) => (net.cap[`${d.src}>${s}`] ?? 0) > 0 && (net.cap[`${s}>${d.dst}`] ?? 0) > 0);
+      const ok = net.spines.filter((s) => (net.cap[`${d.src}>${s}`] ?? 0) > 0 && (net.cap[`${s}>${d.dst}`] ?? 0) > 0 && (!focusSpines || focusSpines.has(s)));
       for (const s of ok) {
         const [sx, sy] = b.pos.L[d.src];
         const [mx, my] = b.pos.S[s];
         const [dx, dy] = b.pos.R[d.dst];
-        el("polyline", { points: `${sx + 19},${sy} ${mx},${my} ${dx - 19},${dy}`, class: "fabric-path" }, b.gPaths);
+        const kind = !focus ? "" : focus.solid.includes(s) ? " is-solid" : " is-dashed";
+        el("polyline", { points: `${sx + 19},${sy} ${mx},${my} ${dx - 19},${dy}`, class: `fabric-path${kind}` }, b.gPaths);
         if (result) {
           const share = total > 0 ? Math.round(((rates[s] ?? 0) / total) * 100) : 0;
           el("text", { x: mx, y: my - 25, class: "fabric-share", "text-anchor": "middle" }, b.gPaths).textContent = `${fmt(rates[s] ?? 0)}G · ${share}%`;
@@ -142,7 +149,7 @@ export function createFabric(host, { onLink, onSelectSource } = {}) {
     if (result && motion) {
       for (const x of b.links.values()) {
         const load = result.linkLoad[x.link] ?? 0;
-        if (!(load > 0.5)) continue;
+        if (!(load > 0.5) || !inFocus(x)) continue;
         const dur = Math.min(8, Math.max(0.6, x.len / (2.2 * load)));
         for (const phase of [0, 0.5]) {
           const c = el("circle", { r: 2.6, class: "fabric-flow" }, b.gDots);
